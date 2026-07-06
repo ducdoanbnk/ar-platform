@@ -144,18 +144,31 @@ là lý do dùng **LIFF** (LINE Front-end Framework — web app chạy bên tron
   `gps_out_of_range`) ✓ → dấu vào sổ ✓ → thống kê nhảy trên dashboard ✓
   → **3/4 tiêu chí PoC chạy được**
 
-### Còn lại
+### ✅ PRODUCTION (từ 2026-07-06) — mọi mục "còn lại" trước đây đã xong
 
-1. **LIFF ID** — tạo LINE Login channel (account LINE cá nhân được, miễn phí)
-   → set `NEXT_PUBLIC_LIFF_ID` → test trong LINE thật trên iPhone/Android
-   (tiêu chí PoC cuối cùng)
-2. **Builder** — nối wizard/editor với events/tasks CRUD (API đã sẵn)
-3. **AR camera thật** — gắn MindAR engine vào màn `/experience/ar`
-   (hiện là visual placeholder; seam đã có ở dự án gốc)
-4. **Deploy URL cố định** (Render/Vercel + Neon PostGIS) thay tunnel khi cần
-   demo ổn định
+| Thành phần | Địa chỉ |
+|---|---|
+| **Frontend** | https://zoustec-frontend.onrender.com |
+| **Backend** | https://zoustec-backend.onrender.com |
+| **Database** | Neon (Singapore) — PostGIS + RLS, 3 tenants |
+| **LIFF** | ID `2010613964-3UzmddVV`, endpoint = frontend URL (đã chốt) |
+| **Repo** | https://github.com/ducdoanbnk/ar-platform (Blueprint `render.yaml`) |
 
-### Chạy dev
+Đã nghiệm thu trên production: 4/4 tiêu chí PoC bằng LINE thật (login người chơi
++ login admin), 3 website khách white-label (`/e/{tenant}/{event}`), builder
+CRUD + QR + sections + hero, AR Studio (AI-3D + compile target), branding
+self-service (logo/màu/domain), custom domain middleware, portal.
+
+### Việc tùy chọn tiếp theo (không chặn gì)
+
+1. **Bàn giao**: tắt `AUTH_DEV_MODE` trên Render, reset password Neon
+   (đã lộ trong quá trình setup), điền ma trận tương thích thiết bị
+2. **Media bền**: chuyển upload sang Cloudflare R2 (free 10GB) — disk Render
+   free là ephemeral, file upload mất khi redeploy
+3. **Console**: thêm nút "新增客戶" (tạo tenant trên UI — hiện qua API)
+4. **Engine Zoustec**: cắm WebAR + AI-3D chính thức vào seam khi khách giao
+
+### Chạy dev (local — production xem bảng trên)
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d db        # DB (cổng 5433)
