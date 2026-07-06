@@ -20,7 +20,15 @@ const METHOD_LABEL = { qr: 'QR + AR', gps: 'GPS + AR', hybrid: '混合驗證' };
 export default function EventSite({ site }) {
   const { branding, event, tasks, other_events: others } = site;
   const p = brandPalette(branding.theme_color || '#0E7490') || {};
-  const joinHref = `/experience/login?tenant=${branding.tenant_slug}&event=${event.id}`;
+  // LIFF permalink (same strategy as QR): works from ANY host — including the
+  // customer's custom domain, where a relative link would put LINE's OAuth
+  // redirectUri outside the LIFF endpoint scope (400 invalid url). Mobile
+  // opens straight into LINE; desktop bounces via the platform endpoint.
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+  const joinQuery = `tenant=${branding.tenant_slug}&event=${event.id}`;
+  const joinHref = liffId
+    ? `https://liff.line.me/${liffId}/experience/login?${joinQuery}`
+    : `/experience/login?${joinQuery}`;
   const hero = event.config?.heroImage;
 
   return (
