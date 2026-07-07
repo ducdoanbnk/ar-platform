@@ -49,7 +49,11 @@ export default function Page() {
     setBusy('save'); setError('');
     try {
       const body = { logo_url: form.logo_url || null, theme_color: form.theme_color };
-      if (form.custom_domain.trim()) body.custom_domain = form.custom_domain.trim().toLowerCase();
+      // People paste full URLs — normalize down to the bare hostname the
+      // backend expects: strip scheme, path, port, trailing dots.
+      const domain = form.custom_domain.trim().toLowerCase()
+        .replace(/^[a-z]+:\/\//, '').split(/[/?#]/)[0].split(':')[0].replace(/\.+$/, '');
+      if (domain) body.custom_domain = domain;
       else body.clear_custom_domain = true;
       const b = await adminApi('/api/admin/branding', { method: 'PATCH', body });
       setBrand(b);
