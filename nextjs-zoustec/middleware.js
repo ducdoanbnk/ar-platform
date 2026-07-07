@@ -1,10 +1,12 @@
 /**
- * Custom-domain → tenant resolution (spec §VIII).
+ * Custom-domain → tenant resolution (spec §VIII, PRD §6.2 tenant resolver:
+ * domain/path → tenant → event).
  *
- * A customer's domain (e.g. walk.tainan.tw) CNAMEs to the platform. When the
- * ROOT of an unknown host is requested, resolve it via the backend and rewrite
- * to that tenant's event entry — the URL in the browser stays the customer's
- * domain (white-label). Platform hosts and deep paths pass through untouched.
+ * A customer's domain (e.g. walk.tainan.tw) CNAMEs to the platform. On an
+ * unknown host, the ROOT rewrites to the tenant's event website entry, and a
+ * single-segment path (/{event-slug}) rewrites to that event's page — the URL
+ * in the browser stays the customer's domain (white-label). Platform hosts
+ * and every other path pass through untouched.
  */
 
 import { NextResponse } from 'next/server';
@@ -14,13 +16,20 @@ const TTL_MS = 60_000;
 const cache = new Map(); // host -> { slug: string|null, ts: number }
 
 const PLATFORM_HOSTS = /(^localhost$)|(\.trycloudflare\.com$)|(\.vercel\.app$)|(\.onrender\.com$)/;
+// Top-level app routes / asset dirs that must never be treated as event slugs.
+const RESERVED = new Set(['api', 'media', 'experience', 'admin', 'e', 'portal', 'screens', 'healthz', 'models', 'targets', 'vendor']);
 
 export async function middleware(req) {
   const url = req.nextUrl;
-  // Root page only — and never touch LIFF OAuth returns / explicit deep-links.
-  if (url.pathname !== '/') return NextResponse.next();
-  for (const k of ['code', 'liff.state', 'tenant', 'event']) {
-    if (url.searchParams.has(k)) return NextResponse.next();
+  const isRoot = url.pathname === '/';
+  // Besides the root, only white-label event paths (/{event-slug}) qualify.
+  const seg = isRoot ? '' : url.pathname.slice(1);
+  if (!isRoot && (!/^[a-z0-9-]+$/.test(seg) || RESERVED.has(seg))) return NextResponse.next();
+  // Never touch LIFF OAuth returns / explicit deep-links on the root.
+  if (isRoot) {
+    for (const k of ['code', 'liff.state', 'tenant', 'event']) {
+      if (url.searchParams.has(k)) return NextResponse.next();
+    }
   }
 
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase();
@@ -40,8 +49,12 @@ export async function middleware(req) {
   if (!slug) return NextResponse.next();
 
   const dest = url.clone();
-  dest.pathname = `/e/${slug}`; // the tenant's EVENT WEBSITE (spec §III.3)
+  // Root → the tenant's homepage rule (event site or branded landing);
+  // /{event-slug} → that event's page. Spec §III.3.
+  dest.pathname = isRoot ? `/e/${slug}` : `/e/${slug}/${seg}`;
   return NextResponse.rewrite(dest);
 }
 
-export const config = { matcher: ['/'] };
+// Named-param matchers ('/:seg') compile incorrectly in Next 14.2 — use a
+// negative-lookahead regex instead; the body re-filters to root + slug paths.
+export const config = { matcher: ['/((?!_next/|api/|media/).*)'] };

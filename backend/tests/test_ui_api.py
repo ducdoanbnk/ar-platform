@@ -220,6 +220,68 @@ async def test_public_event_site_payload(client, demo):
     assert missing.status_code == 404
 
 
+async def test_public_site_homepage_rules(client, demo):
+    """Spec §VIII + PRD §6.2 tenant resolver: what the domain root serves.
+
+    auto + 1 event → that event; auto + several → branded landing;
+    admin-pinned event → that event (slug must be active); list → landing."""
+    # One active event → straight to it.
+    root = await client.get("/api/public/site/alpha")
+    assert root.status_code == 200
+    assert root.json()["mode"] == "event"
+
+    # A second active event appears → auto now serves the landing.
+    admin = await login(client, "alpha", "admin-a")
+    created = await client.post(
+        "/api/admin/events",
+        headers=bearer(admin),
+        json={"slug": "hike", "name": "Alpha Hike", "event_type": "hiking"},
+    )
+    assert created.status_code == 201, created.text
+
+    root = await client.get("/api/public/site/alpha")
+    body = root.json()
+    assert body["mode"] == "landing"
+    assert {e["slug"] for e in body["events"]} == {"walk", "hike"}
+    assert body["branding"]["tenant_slug"] == "alpha"
+    walk = next(e for e in body["events"] if e["slug"] == "walk")
+    assert walk["task_count"] == 3
+
+    # Admin pins the domain root to one event.
+    pinned = await client.patch(
+        "/api/admin/branding",
+        headers=bearer(admin),
+        json={"home_mode": "event", "home_event_slug": "walk"},
+    )
+    assert pinned.status_code == 200, pinned.text
+    assert pinned.json()["home_mode"] == "event"
+    assert pinned.json()["home_event_slug"] == "walk"
+    root = await client.get("/api/public/site/alpha")
+    assert root.json()["mode"] == "event"
+    assert root.json()["event"]["slug"] == "walk"
+
+    # Pinning an unknown event is rejected.
+    bad = await client.patch(
+        "/api/admin/branding",
+        headers=bearer(admin),
+        json={"home_mode": "event", "home_event_slug": "nope"},
+    )
+    assert bad.status_code == 422
+
+    # Explicit list mode always serves the landing.
+    listed = await client.patch(
+        "/api/admin/branding", headers=bearer(admin), json={"home_mode": "list"}
+    )
+    assert listed.status_code == 200
+    root = await client.get("/api/public/site/alpha")
+    assert root.json()["mode"] == "landing"
+
+    # Direct event URLs keep working regardless of the homepage rule.
+    direct = await client.get("/api/public/site/alpha/hike")
+    assert direct.status_code == 200
+    assert direct.json()["event"]["slug"] == "hike"
+
+
 # ------------------------------------------------------------------ branding + in-DB media persistence
 
 

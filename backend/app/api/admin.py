@@ -450,6 +450,8 @@ async def get_branding(ctx: AuthContext = Depends(tenant_admin_context)) -> Bran
         show_powered_by=not brand.get("hide_powered_by", False),
         line_liff_id=tenant.line_liff_id,
         custom_domain=tenant.custom_domain,
+        home_mode=brand.get("home_mode", "auto"),
+        home_event_slug=brand.get("home_event_slug"),
     )
 
 
@@ -485,6 +487,18 @@ async def update_branding(
                 raise ApiError(409, "domain_taken", "This domain is bound to another tenant.")
             tenant.custom_domain = domain.lower()
 
+    # Homepage rule (PRD §6.2): pinning the domain root to an event requires
+    # that event to exist and be active in this tenant (session is RLS-scoped).
+    if changes.get("home_mode") == "event" or changes.get("home_event_slug"):
+        slug = changes.get("home_event_slug") or (tenant.brand_config or {}).get("home_event_slug")
+        known = slug and (
+            await ctx.session.execute(
+                select(Event.id).where(Event.slug == slug, Event.is_active)
+            )
+        ).scalar_one_or_none()
+        if not known:
+            raise ApiError(422, "event_not_found", "home_event_slug must be an active event of this tenant.")
+
     brand = dict(tenant.brand_config or {})
     brand.update(changes)
     tenant.brand_config = brand
@@ -500,6 +514,8 @@ async def update_branding(
         show_powered_by=not brand.get("hide_powered_by", False),
         line_liff_id=tenant.line_liff_id,
         custom_domain=tenant.custom_domain,
+        home_mode=brand.get("home_mode", "auto"),
+        home_event_slug=brand.get("home_event_slug"),
     )
 
 

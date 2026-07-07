@@ -89,6 +89,11 @@ class BrandingUpdate(BaseModel):
         pattern=r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
     )
     clear_custom_domain: bool = False
+    # Trang gốc domain khách hiển thị gì khi tenant có nhiều sự kiện (PRD §6.2
+    # tenant resolver): auto = 1 sự kiện thì vào thẳng, nhiều thì trang tổng
+    # quan; list = luôn trang tổng quan; event = ghim home_event_slug.
+    home_mode: Literal["auto", "list", "event"] | None = None
+    home_event_slug: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$")
 
 
 class BrandingOut(BaseModel):
@@ -102,6 +107,8 @@ class BrandingOut(BaseModel):
     show_powered_by: bool = True
     line_liff_id: str | None = None
     custom_domain: str | None = None
+    home_mode: str = "auto"
+    home_event_slug: str | None = None
 
 
 # ---------------------------------------------------------------- events

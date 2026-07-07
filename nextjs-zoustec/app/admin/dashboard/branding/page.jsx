@@ -11,7 +11,8 @@ const PRESETS = ['#0E7490', '#DC2626', '#16A34A', '#D97706', '#7C3AED', '#DB2777
 export default function Page() {
   const router = useRouter();
   const [brand, setBrand] = useState(null);   // server truth
-  const [form, setForm] = useState(null);     // {logo_url, theme_color}
+  const [form, setForm] = useState(null);     // {logo_url, theme_color, custom_domain, home}
+  const [events, setEvents] = useState([]);   // active events → 首頁顯示 options
   const [busy, setBusy] = useState('');
   const [flash, setFlash] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +22,16 @@ export default function Page() {
       try {
         const b = await adminApi('/api/admin/branding');
         setBrand(b);
-        setForm({ logo_url: b.logo_url || '', theme_color: b.theme_color || '#0E7490', custom_domain: b.custom_domain || '' });
+        setForm({
+          logo_url: b.logo_url || '',
+          theme_color: b.theme_color || '#0E7490',
+          custom_domain: b.custom_domain || '',
+          home: b.home_mode === 'event' && b.home_event_slug ? `event:${b.home_event_slug}` : (b.home_mode || 'auto'),
+        });
+        try {
+          const evs = await adminApi('/api/admin/events');
+          setEvents(evs.filter((e) => e.is_active));
+        } catch { /* dropdown chỉ còn auto/list */ }
       } catch (e) {
         if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding'));
         setError(e.message);
@@ -55,6 +65,12 @@ export default function Page() {
         .replace(/^[a-z]+:\/\//, '').split(/[/?#]/)[0].split(':')[0].replace(/\.+$/, '');
       if (domain) body.custom_domain = domain;
       else body.clear_custom_domain = true;
+      if (form.home.startsWith('event:')) {
+        body.home_mode = 'event';
+        body.home_event_slug = form.home.slice(6);
+      } else {
+        body.home_mode = form.home;
+      }
       const b = await adminApi('/api/admin/branding', { method: 'PATCH', body });
       setBrand(b);
       note('已儲存 ✓ — 活動網站即刻套用');
@@ -113,6 +129,17 @@ export default function Page() {
           <div style={{fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.7, marginBottom:'16px'}}>
             儲存後，請於您的 DNS 加入一筆 <b>CNAME</b> 指向平台網域。訪客造訪您的網域即直接看到貴組織的活動網站（網址列保持您的網域）。
             {form.custom_domain.trim() && <><br/>目前綁定：<a href={`http://${form.custom_domain.trim()}${typeof window !== 'undefined' && window.location.port ? ':' + window.location.port : ''}/`} target="_blank" rel="noreferrer" style={{color:'var(--primary-600)', fontWeight:'700', fontFamily:'var(--font-mono)'}}>{form.custom_domain.trim()} ↗</a></>}
+          </div>
+
+          <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'8px'}}>首頁顯示（訪客造訪網域根目錄）</label>
+          <select value={form.home} onChange={(e) => setForm({ ...form, home: e.target.value })}
+            style={{width:'100%', height:'42px', border:'1px solid var(--border-default)', borderRadius:'9px', padding:'0 10px', fontSize:'13.5px', color:'var(--text-body)', background:'#fff', marginBottom:'8px'}}>
+            <option value="auto">自動 — 單一活動時直接顯示；多個活動時顯示活動總覽</option>
+            <option value="list">活動總覽頁 — 列出所有進行中的活動</option>
+            {events.map((e) => <option key={e.id} value={`event:${e.slug}`}>指定活動：{e.name}</option>)}
+          </select>
+          <div style={{fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.7, marginBottom:'16px'}}>
+            各活動也有專屬網址：您的網域 + <span style={{fontFamily:'var(--font-mono)'}}>/活動代稱</span>（例：<span style={{fontFamily:'var(--font-mono)'}}>{(form.custom_domain.trim() || '您的網域')}/{events[0]?.slug || 'event-slug'}</span>）。
           </div>
 
           <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'14px', fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.6}}>

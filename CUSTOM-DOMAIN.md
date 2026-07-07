@@ -68,9 +68,12 @@ cuối là domain của khách.
 
 ### 4. Bộ định tuyến — `nextjs-zoustec/middleware.js`
 
-Chạy trên **mọi request tới `/`** (matcher root-only), theo thứ tự:
+Chạy trên **request tới `/` và path 1 cấp `/{event-slug}`** (PRD §6.2
+tenant resolver: domain/path → tenant → sự kiện), theo thứ tự:
 
-1. **Bỏ qua** nếu URL mang tham số OAuth/deep-link (`code`, `liff.state`,
+1. **Bỏ qua** path không phải root/slug-1-cấp, slug thuộc danh sách
+   RESERVED (`api`, `media`, `experience`, `admin`, `e`, `portal`…),
+   hoặc URL root mang tham số OAuth/deep-link (`code`, `liff.state`,
    `tenant`, `event`) — để không phá luồng đăng nhập LINE (đây từng là
    nguồn bug "login kẹt vòng lặp", nên guard này là bắt buộc).
 2. **Bỏ qua** nếu Host là host nền tảng (regex `localhost` /
@@ -79,14 +82,31 @@ Chạy trên **mọi request tới `/`** (matcher root-only), theo thứ tự:
 3. Host lạ → tra `GET {BACKEND}/api/public/domains/{host}`, **cache
    in-memory 60 giây** (kể cả kết quả "không có" — nên sau khi khách lưu
    domain, tối đa 1 phút mới nhận diện).
-4. Tìm thấy tenant → `NextResponse.rewrite('/e/{slug}')`. **Rewrite chứ
-   không redirect** — nội dung là website sự kiện nhưng địa chỉ vẫn là
+4. Tìm thấy tenant → root rewrite `/e/{slug}`, còn `/{event-slug}` rewrite
+   `/e/{slug}/{event-slug}` (URL trắng nhãn cho từng sự kiện). **Rewrite
+   chứ không redirect** — nội dung là website sự kiện nhưng địa chỉ vẫn là
    domain khách. Đây chính là điểm làm nên "white-label".
 5. Không tìm thấy / backend chết → **fail-open**: hiện portal như thường,
    không bao giờ trả trang lỗi vì khâu tra domain.
 
-Deep path (`/experience/...`, `/api/...`, `/e/...`) không qua middleware —
-app phục vụ bình thường trên mọi host.
+Deep path (`/experience/...`, `/api/...`, `/e/...`) không bị đụng tới —
+app phục vụ bình thường trên mọi host. Lưu ý matcher dùng regex
+negative-lookahead vì dạng `'/:seg'` compile sai trên Next 14.2.
+
+### 4b. Trang gốc domain hiển thị gì khi tenant có nhiều sự kiện
+
+Quy tắc 3 bậc, quyết định ở `GET /api/public/site/{tenant}` theo
+`brand_config.home_mode` (khách tự chỉnh ở `/admin/dashboard/branding`,
+mục 首頁顯示):
+
+| `home_mode` | Trang gốc domain |
+|---|---|
+| `event` (+ `home_event_slug`) | Website sự kiện được ghim; slug phải là sự kiện đang active (validate khi lưu); nếu sau đó sự kiện bị tắt → tự rơi về `auto` |
+| `list` | Trang tổng quan thương hiệu khách (`TenantLanding`) liệt kê mọi sự kiện active |
+| `auto` (mặc định) | 1 sự kiện → vào thẳng; ≥2 sự kiện → trang tổng quan |
+
+Response của `/api/public/site/{tenant}` có field `mode`:
+`"event"` (payload như cũ) hoặc `"landing"` (`branding` + `events[]`).
 
 ### 5. Hạ tầng — DNS + Render
 
