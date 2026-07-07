@@ -6,14 +6,10 @@ import { Icon } from '../Icon';
 import { adminLogout, adminSession } from '../../lib/admin-client';
 
 const NAV = [
-  { key: 'overview', href: '/admin/dashboard', icon: 'layout-dashboard', label: '總覽' },
-  { key: 'builder', href: '/admin/builder', icon: 'calendar-check', label: '活動' },
-  { key: 'members', href: '/admin/dashboard/members', icon: 'users', label: '參與者' },
-];
-const NAV_STATIC = [
-  { icon: 'list-checks', label: '任務與集章', href: '/admin/builder' },
-  { icon: 'box', label: 'AR / 3D 體驗', href: '/admin/ar-studio' },
-  { icon: 'chart-no-axes-column', label: '報表', href: '/admin/dashboard' },
+  { key: 'overview', href: '/admin/dashboard', icon: 'layout-dashboard', label: '總覽', short: '總覽' },
+  { key: 'builder', href: '/admin/builder', icon: 'calendar-check', label: '活動', short: '活動' },
+  { key: 'members', href: '/admin/dashboard/members', icon: 'users', label: '參與者', short: '參與者' },
+  { key: 'arstudio', href: '/admin/ar-studio', icon: 'box', label: 'AR / 3D 體驗', short: 'AR 3D' },
 ];
 
 function SideLink({ item, active }) {
@@ -43,14 +39,9 @@ export default function AdminShell({ active, children }) {
       <div><div style={{color:'#fff', fontWeight:'800', fontSize:'15px', letterSpacing:'-.01em', whiteSpace:'nowrap'}}>Zoustec AR</div><div style={{color:'#6FCDE8', fontSize:'11px', fontWeight:'600'}}>管理後台</div></div>
     </div>
     <div style={{fontSize:'10px', fontWeight:'700', letterSpacing:'.12em', color:'#4E7A88', padding:'8px 10px 6px'}}>活動</div>
-    <SideLink item={NAV[0]} active={active} />
-    <SideLink item={NAV[1]} active={active} />
-    {NAV_STATIC.slice(0, 1).map((i) => <SideLink key={i.label} item={{ ...i, key: i.label }} active={active} />)}
-    <SideLink item={NAV[2]} active={active} />
-    {NAV_STATIC.slice(1).map((i) => <SideLink key={i.label} item={{ ...i, key: i.label }} active={active} />)}
+    {NAV.map((i) => <SideLink key={i.key} item={i} active={active} />)}
     <div style={{fontSize:'10px', fontWeight:'700', letterSpacing:'.12em', color:'#4E7A88', padding:'18px 10px 6px'}}>設定</div>
     <SideLink item={{ key: 'brand', href: '/admin/dashboard/branding', icon: 'palette', label: '品牌與網域' }} active={active} />
-    <SideLink item={{ key: 'settings', href: '/admin/dashboard', icon: 'settings', label: '設定' }} active={active} />
     <div style={{marginTop:'auto', display:'flex', alignItems:'center', gap:'11px', padding:'10px', borderTop:'1px solid rgba(255,255,255,.08)'}}>
       <div style={{width:'34px', height:'34px', borderRadius:'9999px', background:'var(--primary-500)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'13px'}}>{(s?.name || 'A').slice(0, 2)}</div>
       <div style={{flex:'1', minWidth:'0'}}><div style={{color:'#fff', fontSize:'13px', fontWeight:'600', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{s?.name || '管理員'}</div><div style={{color:'#6FCDE8', fontSize:'11px'}}>管理員</div></div>
@@ -66,7 +57,7 @@ export default function AdminShell({ active, children }) {
     <nav className="app-bottom-nav">
       {NAV.map((i) => (
         <Link key={i.key} href={i.href} className={`bn-item${active === i.key ? ' active' : ''}`}>
-          <span style={{fontSize:'21px', display:'inline-flex', lineHeight:'0'}}><Icon name={i.icon} /></span>{i.label}
+          <span style={{fontSize:'21px', display:'inline-flex', lineHeight:'0'}}><Icon name={i.icon} /></span>{i.short || i.label}
         </Link>
       ))}
       <button onClick={logout} className="bn-item" style={{background:'none', border:'none', cursor:'pointer'}}>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Icon } from '../../../components/Icon';
+import AdminShell from '../../../components/admin/AdminShell';
 import { adminApi, adminDownload, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
 import EventSections from '../../../components/event/EventSections';
 import { DEFAULT_SECTIONS, sectionBodyToText, textToSectionBody, SECTION_TYPE_META } from '../../../lib/event-sections';
@@ -216,11 +217,11 @@ export default function Page() {
   const meta = TYPE_META[event?.event_type] || TYPE_META.city;
 
   return (
+<AdminShell active="builder">
 <div className="editor-shell">
 
   {/* ── Toolbar ───────────────────────────────────────────────────────── */}
   <div className="editor-topbar" style={{height:'60px', flex:'0 0 auto', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', padding:'0 20px', gap:'18px'}}>
-    <Link href="/admin/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
     <div style={{display:'flex', alignItems:'center', gap:'9px', fontSize:'14px', fontWeight:'700', color:'var(--text-strong)'}}><span style={{fontSize:'17px', color:'var(--primary-600)', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span>網站產生器</div>
     <div className="hide-mobile" style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'8px'}}>
       <Link href="/admin/builder/new" style={{display:'inline-flex', alignItems:'center', gap:'7px', fontSize:'12.5px', fontWeight:'600', color:'var(--text-muted)', textDecoration:'none'}}><span style={{width:'20px', height:'20px', borderRadius:'9999px', background:'var(--success-500)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'11px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="check" /></span></span>範本</Link>
@@ -440,5 +441,6 @@ export default function Page() {
     </div>
   )}
 </div>
+</AdminShell>
   );
 }

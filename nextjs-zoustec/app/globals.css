@@ -536,8 +536,17 @@ a:hover { text-decoration: none; }
 .editor-aside { overflow: auto; }
 .editor-canvas { flex: 1; min-width: 0; overflow: auto; }
 
+/* Editor nested inside the admin shell (builder, ar-studio): fill the main
+   column instead of the whole viewport; the shell owns the scroll then. */
+.app-main > .editor-shell { height: auto; flex: 1; min-height: 0; }
+
 @media (max-width: 900px) {
   .editor-shell { height: auto; min-height: 100dvh; }
+  .app-main > .editor-shell {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .editor-body { flex-direction: column; overflow: visible; }
   .editor-aside {
     width: 100% !important;
@@ -550,6 +559,11 @@ a:hover { text-decoration: none; }
   /* Toolbar rows wrap on small screens. */
   .editor-topbar { flex-wrap: wrap; height: auto !important; padding: 10px 14px !important; row-gap: 10px; }
   .editor-topbar .hide-mobile { display: none !important; }
+}
+
+/* Keep nested-editor content clear of the fixed bottom navigation. */
+@media (max-width: 768px) {
+  .app-main > .editor-shell { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ════════════════════════════════════════════════════════════════════════

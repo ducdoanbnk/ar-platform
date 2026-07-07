@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Icon } from '../../../components/Icon';
+import AdminShell from '../../../components/admin/AdminShell';
 import { adminApi, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
 
 const GlbPreview = dynamic(() => import('../../../components/GlbPreview'), { ssr: false });
@@ -131,11 +132,11 @@ export default function Page() {
   const st = sel ? STATUS_META[sel.status] : null;
 
   return (
+<AdminShell active="arstudio">
 <div className="editor-shell">
 
   {/* ── Toolbar ───────────────────────────────────────────────────────── */}
   <div className="editor-topbar" style={{height:'60px', flex:'0 0 auto', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', padding:'0 22px', gap:'12px'}}>
-    <Link href="/admin/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
     <span style={{width:'34px', height:'34px', borderRadius:'9px', background:'linear-gradient(145deg,#6FCDE8,#0E7490)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'17px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="sparkles" /></span></span>
     <div><div style={{fontSize:'15px', fontWeight:'800', color:'var(--text-strong)'}}>AR Studio · AI 3D 生成</div><div style={{fontSize:'11.5px', color:'var(--text-muted)'}}>上傳 2D 圖 → AI 生成 3D → 於網站產生器指派給任務</div></div>
     <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'10px'}}>
@@ -244,5 +245,6 @@ export default function Page() {
     </aside>
   </div>
 </div>
+</AdminShell>
   );
 }

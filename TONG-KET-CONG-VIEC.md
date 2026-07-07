@@ -66,7 +66,10 @@ account LINE thật của Đức là tenant_admin). Dev admin: `admin-bnk`,
 Ngoài ra (sau `3f240ac`): **mọi trang quản trị dời vào `/admin/*`** —
 `/admin/dashboard` (+`/branding`, `/members`), `/admin/builder` (+`/new`),
 `/admin/ar-studio`, `/admin/console`. URL cũ (bookmark, liff.state cũ) vẫn
-sống nhờ redirect 307 trong `next.config.mjs`.
+sống nhờ redirect 307 trong `next.config.mjs`. Sidebar admin thống nhất:
+builder + ar-studio bọc trong `AdminShell` (có sidebar, không còn "trang lạ"),
+AR Studio thành mục menu thật; bỏ 3 mục chết (任務與集章/報表/設定 — trỏ trùng
+màn khác). CSS `.app-main > .editor-shell` cho editor lồng trong shell.
 
 Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Render↔Neon
 (nặng nhất, đã sửa), (2) cold start free tier (chưa sửa — xem mục 5),
