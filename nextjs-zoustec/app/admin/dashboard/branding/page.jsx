@@ -27,6 +27,9 @@ export default function Page() {
           theme_color: b.theme_color || '#0E7490',
           custom_domain: b.custom_domain || '',
           home: b.home_mode === 'event' && b.home_event_slug ? `event:${b.home_event_slug}` : (b.home_mode || 'auto'),
+          landing_title: b.landing_title || '',
+          landing_tagline: b.landing_tagline || '',
+          landing_hero: b.landing_hero || '',
         });
         try {
           const evs = await adminApi('/api/admin/events');
@@ -54,6 +57,19 @@ export default function Page() {
     finally { setBusy(''); }
   }
 
+  async function uploadLandingHero(file) {
+    if (!file || busy) return;
+    setBusy('hero'); setError('');
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const out = await adminUpload('/api/admin/media', fd);
+      setForm({ ...form, landing_hero: out.url });
+      note('封面已上傳 — 按「儲存」生效');
+    } catch (e) { if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding')); setError(e.message); }
+    finally { setBusy(''); }
+  }
+
   async function save() {
     if (busy || !form) return;
     setBusy('save'); setError('');
@@ -71,6 +87,9 @@ export default function Page() {
       } else {
         body.home_mode = form.home;
       }
+      body.landing_title = form.landing_title.trim() || null;
+      body.landing_tagline = form.landing_tagline.trim() || null;
+      body.landing_hero = form.landing_hero || null;
       const b = await adminApi('/api/admin/branding', { method: 'PATCH', body });
       setBrand(b);
       note('已儲存 ✓ — 活動網站即刻套用');
@@ -142,8 +161,33 @@ export default function Page() {
             各活動也有專屬網址：您的網域 + <span style={{fontFamily:'var(--font-mono)'}}>/活動代稱</span>（例：<span style={{fontFamily:'var(--font-mono)'}}>{(form.custom_domain.trim() || '您的網域')}/{events[0]?.slug || 'event-slug'}</span>）。
           </div>
 
+          <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'16px', fontSize:'13px', fontWeight:'700', color:'var(--text-strong)', marginBottom:'12px'}}>活動總覽首頁內容</div>
+
+          <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'8px'}}>首頁標題</label>
+          <input value={form.landing_title} onChange={(e) => setForm({ ...form, landing_title: e.target.value })} placeholder={`留空 = 組織名稱（${brand?.tenant_name || ''}）`}
+            style={{width:'100%', height:'42px', border:'1px solid var(--border-default)', borderRadius:'9px', padding:'0 13px', fontSize:'13.5px', outline:'none', marginBottom:'12px'}} />
+
+          <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'8px'}}>首頁副標（歡迎語）</label>
+          <textarea value={form.landing_tagline} onChange={(e) => setForm({ ...form, landing_tagline: e.target.value })} rows={2} placeholder="留空 = 選擇一個活動開始 — 掃描 AR、完成任務並收集紀念印章。"
+            style={{width:'100%', border:'1px solid var(--border-default)', borderRadius:'9px', padding:'10px 13px', fontSize:'13px', outline:'none', resize:'vertical', fontFamily:'inherit', marginBottom:'12px'}} />
+
+          <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'8px'}}>首頁封面圖</label>
+          {form.landing_hero ? (
+            <div style={{position:'relative', marginBottom:'8px'}}>
+              <img src={form.landing_hero} alt="landing hero" style={{width:'100%', height:'96px', objectFit:'cover', borderRadius:'10px', border:'1px solid var(--border-subtle)'}} />
+              <button onClick={() => setForm({ ...form, landing_hero: '' })} title="移除" style={{position:'absolute', top:'6px', right:'6px', width:'26px', height:'26px', borderRadius:'9999px', background:'rgba(11,41,53,.72)', color:'#fff', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="x" /></span></button>
+            </div>
+          ) : null}
+          <label style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'7px', padding:'10px', borderRadius:'9px', border:'1.5px dashed var(--border-default)', color:'var(--text-muted)', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', marginBottom:'8px'}}>
+            <span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name={busy === 'hero' ? 'loader' : 'image-up'} /></span>{busy === 'hero' ? '上傳中…' : form.landing_hero ? '更換封面圖' : '上傳封面圖（留空 = 主題色漸層）'}
+            <input type="file" accept="image/png,image/jpeg,image/webp" style={{display:'none'}} onChange={(e) => uploadLandingHero(e.target.files?.[0])} />
+          </label>
+          <div style={{fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.7, marginBottom:'16px'}}>
+            這些內容顯示於「活動總覽頁」（多活動時的網域首頁）。各活動網站的標題、介紹與封面請於<b>網站產生器</b>編輯。
+          </div>
+
           <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'14px', fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.6}}>
-            LINE 綁定（LIFF 專屬通道）與「Powered by Zoustec」開關由平台方（Zoustec）於平台後台管理。
+            LINE 綁定（LIFF 專屬通道）與「Powered by Zoustec」開關由平台方（Zoustec）於平台後台管理。組織名稱由平台方協助變更。
           </div>
         </div>
 

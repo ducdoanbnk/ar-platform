@@ -94,6 +94,11 @@ class BrandingUpdate(BaseModel):
     # quan; list = luôn trang tổng quan; event = ghim home_event_slug.
     home_mode: Literal["auto", "list", "event"] | None = None
     home_event_slug: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$")
+    # Nội dung trang tổng quan (TenantLanding) — khách tự soạn; rỗng = mặc định
+    # (tiêu đề = tên tổ chức, mô tả = câu chào chuẩn của nền tảng).
+    landing_title: str | None = Field(default=None, max_length=255)
+    landing_tagline: str | None = Field(default=None, max_length=500)
+    landing_hero: str | None = Field(default=None, max_length=1024)
 
 
 class BrandingOut(BaseModel):
@@ -109,6 +114,9 @@ class BrandingOut(BaseModel):
     custom_domain: str | None = None
     home_mode: str = "auto"
     home_event_slug: str | None = None
+    landing_title: str | None = None
+    landing_tagline: str | None = None
+    landing_hero: str | None = None
 
 
 # ---------------------------------------------------------------- events

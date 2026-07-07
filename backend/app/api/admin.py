@@ -452,6 +452,9 @@ async def get_branding(ctx: AuthContext = Depends(tenant_admin_context)) -> Bran
         custom_domain=tenant.custom_domain,
         home_mode=brand.get("home_mode", "auto"),
         home_event_slug=brand.get("home_event_slug"),
+        landing_title=brand.get("landing_title"),
+        landing_tagline=brand.get("landing_tagline"),
+        landing_hero=brand.get("landing_hero"),
     )
 
 
@@ -516,6 +519,9 @@ async def update_branding(
         custom_domain=tenant.custom_domain,
         home_mode=brand.get("home_mode", "auto"),
         home_event_slug=brand.get("home_event_slug"),
+        landing_title=brand.get("landing_title"),
+        landing_tagline=brand.get("landing_tagline"),
+        landing_hero=brand.get("landing_hero"),
     )
 
 

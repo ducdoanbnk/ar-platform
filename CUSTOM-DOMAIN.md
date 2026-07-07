@@ -108,6 +108,11 @@ mục 首頁顯示):
 Response của `/api/public/site/{tenant}` có field `mode`:
 `"event"` (payload như cũ) hoặc `"landing"` (`branding` + `events[]`).
 
+Nội dung trang tổng quan khách tự soạn ở cùng màn branding (mục
+活動總覽首頁內容): `landing_title` (rỗng = tên tổ chức), `landing_tagline`
+(rỗng = câu chào mặc định), `landing_hero` (ảnh nền, rỗng = gradient màu
+thương hiệu). Tên tổ chức gốc (tenant.name) do platform quản lý qua console.
+
 ### 5. Hạ tầng — DNS + Render
 
 Tầng duy nhất nằm ngoài code, làm **một lần cho mỗi domain**:

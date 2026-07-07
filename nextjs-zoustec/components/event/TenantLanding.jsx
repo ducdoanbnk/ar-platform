@@ -21,21 +21,25 @@ export default function TenantLanding({ site, linkBase }) {
   const { branding, events } = site;
   const p = brandPalette(branding.theme_color || '#0E7490') || {};
   const base = linkBase ?? `/e/${branding.tenant_slug}`;
+  // Khách tự soạn ở /admin/dashboard/branding (mục 活動總覽首頁); rỗng = mặc định.
+  const title = branding.landing_title || branding.tenant_name;
+  const tagline = branding.landing_tagline || '選擇一個活動開始 — 掃描 AR、完成任務並收集紀念印章。';
+  const heroImg = branding.landing_hero;
 
   return (
 <div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column' }}>
 
   {/* ── Hero: tenant identity ─────────────────────────────────────────── */}
-  <div style={{background:`linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', padding:'clamp(36px, 7vw, 64px) clamp(20px, 5vw, 40px) clamp(30px, 5vw, 48px)', position:'relative', overflow:'hidden'}}>
+  <div style={{background: heroImg ? `linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66)), url(${heroImg}) center/cover` : `linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', padding:'clamp(36px, 7vw, 64px) clamp(20px, 5vw, 40px) clamp(30px, 5vw, 48px)', position:'relative', overflow:'hidden'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 82% 18%, rgba(255,255,255,.14), transparent 52%)'}}></div>
     <div style={{position:'relative', maxWidth:'1000px', margin:'0 auto'}}>
       <div style={{display:'flex', alignItems:'center', gap:'13px'}}>
         {branding.logo_url
           ? <img src={branding.logo_url} alt={branding.tenant_name} style={{width:'52px', height:'52px', borderRadius:'14px', objectFit:'cover', background:'#fff'}} />
           : <span style={{width:'48px', height:'48px', borderRadius:'13px', background:'rgba(255,255,255,.16)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'24px'}}><Icon name="scan-line" /></span>}
-        <div style={{fontSize:'clamp(24px, 4.5vw, 34px)', fontWeight:'800', letterSpacing:'-.02em'}}>{branding.tenant_name}</div>
+        <div style={{fontSize:'clamp(24px, 4.5vw, 34px)', fontWeight:'800', letterSpacing:'-.02em'}}>{title}</div>
       </div>
-      <div style={{fontSize:'15px', color:'rgba(255,255,255,.82)', marginTop:'14px', maxWidth:'56ch', lineHeight:1.6}}>選擇一個活動開始 — 掃描 AR、完成任務並收集紀念印章。</div>
+      <div style={{fontSize:'15px', color:'rgba(255,255,255,.82)', marginTop:'14px', maxWidth:'56ch', lineHeight:1.6}}>{tagline}</div>
     </div>
   </div>
 

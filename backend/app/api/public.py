@@ -25,6 +25,9 @@ def _site_branding(tenant: Tenant) -> dict:
         "logo_url": brand.get("logo_url"),
         "theme_color": brand.get("theme_color"),
         "show_powered_by": not brand.get("hide_powered_by", False),
+        "landing_title": brand.get("landing_title"),
+        "landing_tagline": brand.get("landing_tagline"),
+        "landing_hero": brand.get("landing_hero"),
     }
 
 

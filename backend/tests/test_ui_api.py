@@ -281,6 +281,20 @@ async def test_public_site_homepage_rules(client, demo):
     assert direct.status_code == 200
     assert direct.json()["event"]["slug"] == "hike"
 
+    # Landing copy is tenant-editable (title/tagline/hero) and flows through
+    # to the public payload; unset fields fall back client-side.
+    edited = await client.patch(
+        "/api/admin/branding",
+        headers=bearer(admin),
+        json={"landing_title": "Alpha Adventures", "landing_tagline": "Chọn hành trình của bạn"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["landing_title"] == "Alpha Adventures"
+    root = await client.get("/api/public/site/alpha")
+    b = root.json()["branding"]
+    assert b["landing_title"] == "Alpha Adventures"
+    assert b["landing_tagline"] == "Chọn hành trình của bạn"
+
 
 # ------------------------------------------------------------------ branding + in-DB media persistence
 
