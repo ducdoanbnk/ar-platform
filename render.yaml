@@ -14,6 +14,7 @@ services:
     dockerfilePath: ./deploy/backend.Dockerfile
     dockerContext: .
     plan: free
+    region: singapore   # cùng region với Neon — mỗi query DB ~1ms thay vì ~170ms (Oregon↔Singapore)
     healthCheckPath: /healthz
     dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
@@ -40,6 +41,7 @@ services:
     dockerfilePath: ./deploy/frontend.Dockerfile
     dockerContext: .
     plan: free
+    region: singapore   # cạnh backend — proxy /api nội vùng
     envVars:
       - key: BACKEND_INTERNAL_URL  # URL backend ở trên (build arg cho rewrites + middleware)
         sync: false
