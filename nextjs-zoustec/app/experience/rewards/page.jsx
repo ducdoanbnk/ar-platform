@@ -39,7 +39,7 @@ export default function Page() {
   const headline = last?.task_name || (done ? '繼續收集' : '開始收集');
 
   return (
-<div style={{flex:'1', display:'flex', flexDirection:'column', minHeight:'100dvh'}}>
+<div style={{flex:'1', display:'flex', flexDirection:'column'}}>
 
   {/* New stamp header — live */}
   <div style={{background:'linear-gradient(150deg, var(--brand-hero-a), var(--brand-hero-b))', padding:'28px 20px 26px', color:'#fff', position:'relative', textAlign:'center', flex:'0 0 auto'}}>

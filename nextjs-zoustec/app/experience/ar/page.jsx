@@ -70,7 +70,7 @@ export default function Page() {
   }
 
   return (
-<div style={{flex:'1', display:'flex', flexDirection:'column', minHeight:'100dvh', background:'#000', position:'relative'}}>
+<div style={{flex:'1', display:'flex', flexDirection:'column', background:'#000', position:'relative'}}>
   {/* Backdrop: real AR camera (MindAR) when the task ships ar_config; static visual otherwise */}
   {hasAr ? (
     <ARStage

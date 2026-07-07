@@ -121,12 +121,10 @@ export default function Page() {
   }
 
   return (
-<div style={{flex:'1', display:'flex', flexDirection:'column', minHeight:'100dvh'}}>
-  {/* LINE LIFF header */}
-  <div style={{height:'44px', flex:'0 0 auto', background:'#06C755', display:'flex', alignItems:'center', padding:'0 14px', gap:'9px', color:'#fff'}}><span style={{fontSize:'17px', display:'inline-flex', lineHeight:'0'}}><Icon name="chevron-left" /></span><span style={{fontWeight:'800', fontSize:'14px', letterSpacing:'-.01em'}}>LINE</span><span style={{fontSize:'12px', opacity:'.85', fontWeight:'600'}}>· {event ? event.name : 'Zoustec AR'}</span><span style={{marginLeft:'auto', fontSize:'17px', display:'inline-flex', lineHeight:'0'}}><Icon name="x" /></span></div>
-
-  {/* Hero / auto-login */}
-  <div style={{flex:'1', display:'flex', flexDirection:'column', background: event?.config?.heroImage ? `linear-gradient(rgba(11,41,53,.78), rgba(19,78,97,.82)), url(${event.config.heroImage}) center/cover` : 'linear-gradient(180deg, var(--brand-hero-b), var(--brand-hero-a))', color:'#fff', padding:'30px 22px 88px', position:'relative'}}>
+<div style={{flex:'1', display:'flex', flexDirection:'column'}}>
+  {/* Hero / auto-login — flex:1 lấp đầy .mobile-viewport (đã có fallback
+      100vh→100dvh trong globals.css, chạy được cả WebView cũ). */}
+  <div style={{flex:'1', display:'flex', flexDirection:'column', background: event?.config?.heroImage ? `linear-gradient(rgba(11,41,53,.78), rgba(19,78,97,.82)), url(${event.config.heroImage}) center/cover` : 'linear-gradient(180deg, var(--brand-hero-b), var(--brand-hero-a))', color:'#fff', padding:'26px 22px calc(84px + env(safe-area-inset-bottom, 0px))', position:'relative'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 70% 12%,rgba(56,176,214,.35),transparent 55%)'}}></div>
     {brand?.logo_url ? (
       <img src={brand.logo_url} alt={brand.tenant_name} style={{position:'relative', marginTop:'14px', width:'64px', height:'64px', borderRadius:'18px', objectFit:'cover', boxShadow:'0 14px 30px rgba(0,0,0,.35)', background:'#fff'}} />

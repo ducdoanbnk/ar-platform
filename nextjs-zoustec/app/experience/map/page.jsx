@@ -39,7 +39,7 @@ export default function Page() {
   const total = progress?.total_tasks ?? 0;
 
   return (
-<div style={{flex:'1', display:'flex', flexDirection:'column', minHeight:'100dvh'}}>
+<div style={{flex:'1', display:'flex', flexDirection:'column'}}>
 
   {/* Map area (decorative) */}
   <div style={{height:'320px', flex:'0 0 auto', position:'relative', background:'#E7EFEA', overflow:'hidden'}}>
