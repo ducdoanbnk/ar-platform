@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon } from '../../components/Icon';
-import { platformApi, AuthRequired, loginUrl, adminLogout } from '../../lib/admin-client';
-import { fmt, fmtCompact } from '../../lib/format';
+import { Icon } from '../../../components/Icon';
+import { platformApi, AuthRequired, loginUrl, adminLogout } from '../../../lib/admin-client';
+import { fmt, fmtCompact } from '../../../lib/format';
 
 const PLAN_META = {
   saas: { label: 'SaaS', bg: 'var(--surface-brand-subtle)', fg: 'var(--primary-700)', bar: 'var(--primary-600)' },
@@ -73,7 +73,7 @@ export default function Page() {
         mrr_ntd: t.mrr_ntd ?? '',
       });
     } catch (e) {
-      if (e instanceof AuthRequired) return router.replace(loginUrl('/console', { platform: true }));
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/console', { platform: true }));
       setError(e.message);
     }
   }
@@ -95,7 +95,7 @@ export default function Page() {
       setMgr(null); setMgrForm(null);
       setOv(await platformApi('/api/platform/overview?months=6'));
     } catch (e) {
-      if (e instanceof AuthRequired) return router.replace(loginUrl('/console', { platform: true }));
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/console', { platform: true }));
       setMgrError(e.message);
     } finally { setMgrBusy(false); }
   }
@@ -105,13 +105,13 @@ export default function Page() {
       try {
         setOv(await platformApi('/api/platform/overview?months=6'));
       } catch (e) {
-        if (e instanceof AuthRequired) return router.replace(loginUrl('/console', { platform: true }));
+        if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/console', { platform: true }));
         setError(e.message);
       }
     })();
   }, [router]);
 
-  function logout() { adminLogout('platform'); router.replace(loginUrl('/console', { platform: true })); }
+  function logout() { adminLogout('platform'); router.replace(loginUrl('/admin/console', { platform: true })); }
 
   if (!ov) {
     return <div className="page-full" style={{display:'flex', alignItems:'center', justifyContent:'center', color: error ? 'var(--status-danger-fg)' : 'var(--text-subtle)', fontSize:'14px', fontWeight:'600'}}>{error || '載入中…'}</div>;

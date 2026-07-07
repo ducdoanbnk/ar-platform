@@ -6,14 +6,14 @@ import { Icon } from '../Icon';
 import { adminLogout, adminSession } from '../../lib/admin-client';
 
 const NAV = [
-  { key: 'overview', href: '/dashboard', icon: 'layout-dashboard', label: '總覽' },
-  { key: 'builder', href: '/builder', icon: 'calendar-check', label: '活動' },
-  { key: 'members', href: '/dashboard/members', icon: 'users', label: '參與者' },
+  { key: 'overview', href: '/admin/dashboard', icon: 'layout-dashboard', label: '總覽' },
+  { key: 'builder', href: '/admin/builder', icon: 'calendar-check', label: '活動' },
+  { key: 'members', href: '/admin/dashboard/members', icon: 'users', label: '參與者' },
 ];
 const NAV_STATIC = [
-  { icon: 'list-checks', label: '任務與集章', href: '/builder' },
-  { icon: 'box', label: 'AR / 3D 體驗', href: '/ar-studio' },
-  { icon: 'chart-no-axes-column', label: '報表', href: '/dashboard' },
+  { icon: 'list-checks', label: '任務與集章', href: '/admin/builder' },
+  { icon: 'box', label: 'AR / 3D 體驗', href: '/admin/ar-studio' },
+  { icon: 'chart-no-axes-column', label: '報表', href: '/admin/dashboard' },
 ];
 
 function SideLink({ item, active }) {
@@ -49,8 +49,8 @@ export default function AdminShell({ active, children }) {
     <SideLink item={NAV[2]} active={active} />
     {NAV_STATIC.slice(1).map((i) => <SideLink key={i.label} item={{ ...i, key: i.label }} active={active} />)}
     <div style={{fontSize:'10px', fontWeight:'700', letterSpacing:'.12em', color:'#4E7A88', padding:'18px 10px 6px'}}>設定</div>
-    <SideLink item={{ key: 'brand', href: '/dashboard/branding', icon: 'palette', label: '品牌與網域' }} active={active} />
-    <SideLink item={{ key: 'settings', href: '/dashboard', icon: 'settings', label: '設定' }} active={active} />
+    <SideLink item={{ key: 'brand', href: '/admin/dashboard/branding', icon: 'palette', label: '品牌與網域' }} active={active} />
+    <SideLink item={{ key: 'settings', href: '/admin/dashboard', icon: 'settings', label: '設定' }} active={active} />
     <div style={{marginTop:'auto', display:'flex', alignItems:'center', gap:'11px', padding:'10px', borderTop:'1px solid rgba(255,255,255,.08)'}}>
       <div style={{width:'34px', height:'34px', borderRadius:'9999px', background:'var(--primary-500)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'13px'}}>{(s?.name || 'A').slice(0, 2)}</div>
       <div style={{flex:'1', minWidth:'0'}}><div style={{color:'#fff', fontSize:'13px', fontWeight:'600', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{s?.name || '管理員'}</div><div style={{color:'#6FCDE8', fontSize:'11px'}}>管理員</div></div>

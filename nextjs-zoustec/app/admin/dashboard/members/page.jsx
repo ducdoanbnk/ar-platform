@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon } from '../../../components/Icon';
-import AdminShell from '../../../components/admin/AdminShell';
-import { adminApi, AuthRequired, loginUrl } from '../../../lib/admin-client';
-import { fmt, fmtDate } from '../../../lib/format';
+import { Icon } from '../../../../components/Icon';
+import AdminShell from '../../../../components/admin/AdminShell';
+import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
+import { fmt, fmtDate } from '../../../../lib/format';
 
 const ROLE_LABEL = { member: '參與者', tenant_admin: '管理員', platform_admin: '平台管理員' };
 
@@ -43,7 +43,7 @@ export default function Page() {
         setMembers(ms);
         setActiveTasks(ov.kpis.active_tasks || 0);
       } catch (e) {
-        if (e instanceof AuthRequired) return router.replace(loginUrl('/dashboard/members'));
+        if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/members'));
         setError(e.message);
       }
     })();

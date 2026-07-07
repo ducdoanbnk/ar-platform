@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Icon } from '../../../components/Icon';
-import { adminApi, AuthRequired, loginUrl } from '../../../lib/admin-client';
-import { DEFAULT_SECTIONS } from '../../../lib/event-sections';
+import { Icon } from '../../../../components/Icon';
+import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
+import { DEFAULT_SECTIONS } from '../../../../lib/event-sections';
 
 const TYPES = [
   { key: 'city', icon: 'building-2', title: '城市探索', sub: 'Urban exploration · 景點與文化', feats: ['景點地圖', '各點文化內容', '古蹟 QR + AR 任務'] },
@@ -33,9 +33,9 @@ export default function Page() {
         method: 'POST',
         body: { slug: slugify(eventName), name: eventName, event_type: type, config: { sections: DEFAULT_SECTIONS[type] }, reward_threshold: 2, reward_name: '紀念獎勵' },
       });
-      router.push(`/builder?event=${ev.id}`);
+      router.push(`/admin/builder?event=${ev.id}`);
     } catch (e) {
-      if (e instanceof AuthRequired) return router.replace(loginUrl('/builder/new'));
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/builder/new'));
       setError(e.message || '建立失敗');
       setBusy(false);
     }
@@ -48,7 +48,7 @@ export default function Page() {
   <div style={{height:'56px', flex:'0 0 auto', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', padding:'0 22px', gap:'11px'}}>
     <span style={{width:'20px', height:'20px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700'}}>1</span>
     <div style={{fontSize:'15px', fontWeight:'800', color:'var(--text-strong)'}}>建立新活動</div>
-    <Link href="/dashboard" style={{marginLeft:'auto', width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="x" /></span></Link>
+    <Link href="/admin/dashboard" style={{marginLeft:'auto', width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="x" /></span></Link>
   </div>
 
   <div style={{flex:'1', background:'var(--surface-app)', padding:'44px 24px 40px'}}>

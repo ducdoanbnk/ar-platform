@@ -58,12 +58,12 @@ Zoustec muốn một **"cỗ máy sản xuất website sự kiện"** — nền 
 │  → /experience    login LINE → bản đồ nhiệm vụ → AR → sổ dấu     │
 ├─────────────────────────────────────────────────────────────────┤
 │  KHÁCH HÀNG CỦA ZOUSTEC (Sở du lịch, Mall... — người thuê)       │
-│  → /dashboard     xem thống kê realtime sự kiện của MÌNH         │
-│  → /builder       tạo website sự kiện (wizard + kéo thả + xuất)  │
-│  → /ar-studio     upload ảnh → AI tạo 3D                         │
+│  → /admin/dashboard     xem thống kê realtime sự kiện của MÌNH         │
+│  → /admin/builder       tạo website sự kiện (wizard + kéo thả + xuất)  │
+│  → /admin/ar-studio     upload ảnh → AI tạo 3D                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  ZOUSTEC (chủ nền tảng)                                          │
-│  → /console       quản lý TẤT CẢ khách thuê, doanh thu, gói      │
+│  → /admin/console       quản lý TẤT CẢ khách thuê, doanh thu, gói      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -132,8 +132,8 @@ là lý do dùng **LIFF** (LINE Front-end Framework — web app chạy bên tron
   reward theo ngưỡng, admin 2 cấp, white-label (logo/màu/domain/LIFF binding),
   export template headless, AI-3D pipeline (mock/Meshy) — **62/62 tests pass**
 - **Frontend** (`nextjs-zoustec/`): UI mới đã nối data thật:
-  - `/dashboard` — KPI + line chart + donut + bảng sự kiện (API `admin/overview`)
-  - `/console` — khách thuê + gói/MRR + bar chart (API `platform/overview`)
+  - `/admin/dashboard` — KPI + line chart + donut + bảng sự kiện (API `admin/overview`)
+  - `/admin/console` — khách thuê + gói/MRR + bar chart (API `platform/overview`)
   - `/portal` — sự kiện công khai cross-tenant (API `public/events`)
   - `/experience/*` — luồng người chơi 4 màn end-to-end: login (LIFF thật khi
     có `NEXT_PUBLIC_LIFF_ID`, dev-mode khi không) → map nhiệm vụ thật → xác

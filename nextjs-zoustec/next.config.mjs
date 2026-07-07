@@ -10,5 +10,14 @@ const nextConfig = {
       { source: '/healthz', destination: `${backend}/healthz` },
     ];
   },
+  async redirects() {
+    // Trang quản trị đã dời vào /admin/* — giữ URL cũ sống (bookmark, liff.state cũ).
+    return [
+      { source: '/dashboard/:path*', destination: '/admin/dashboard/:path*', permanent: false },
+      { source: '/builder/:path*', destination: '/admin/builder/:path*', permanent: false },
+      { source: '/ar-studio', destination: '/admin/ar-studio', permanent: false },
+      { source: '/console', destination: '/admin/console', permanent: false },
+    ];
+  },
 };
 export default nextConfig;

@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Icon } from '../../components/Icon';
-import AdminShell from '../../components/admin/AdminShell';
-import { adminApi, AuthRequired, loginUrl } from '../../lib/admin-client';
-import { fmt, fmtCompact, fmtPct } from '../../lib/format';
+import { Icon } from '../../../components/Icon';
+import AdminShell from '../../../components/admin/AdminShell';
+import { adminApi, AuthRequired, loginUrl } from '../../../lib/admin-client';
+import { fmt, fmtCompact, fmtPct } from '../../../lib/format';
 
 const METHOD_META = {
   qr: { label: 'QR + AR', color: '#0E7490' },
@@ -102,7 +102,7 @@ export default function Page() {
       try {
         setOv(await adminApi('/api/admin/overview?days=14'));
       } catch (e) {
-        if (e instanceof AuthRequired) return router.replace(loginUrl('/dashboard'));
+        if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard'));
         setError(e.message);
       }
     })();
@@ -155,7 +155,7 @@ export default function Page() {
       <div style={{background:'#fff', border:'1px solid var(--border-subtle)', borderRadius:'12px', boxShadow:'var(--shadow-sm)', overflow:'hidden'}}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid var(--border-subtle)', flexWrap:'wrap', gap:'10px'}}>
           <div style={{fontSize:'15px', fontWeight:'700', color:'var(--text-strong)'}}>管理中的活動</div>
-          <Link href="/builder/new" style={{display:'flex', alignItems:'center', gap:'8px', height:'36px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="plus" /></span>建立活動</Link>
+          <Link href="/admin/builder/new" style={{display:'flex', alignItems:'center', gap:'8px', height:'36px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="plus" /></span>建立活動</Link>
         </div>
         <div className="table-scroll">
           <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px', minWidth:'720px'}}>
@@ -176,7 +176,7 @@ export default function Page() {
                         ? <span style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'4px 10px', borderRadius:'9999px', background:'var(--status-success-bg)', color:'var(--status-success-fg)', fontWeight:'700', fontSize:'11.5px'}}><span style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></span>進行中</span>
                         : <span style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'4px 10px', borderRadius:'9999px', background:'var(--status-neutral-bg)', color:'var(--status-neutral-fg)', fontWeight:'700', fontSize:'11.5px'}}><span style={{width:'6px', height:'6px', borderRadius:'50%', background:'currentColor'}}></span>停用</span>}
                     </td>
-                    <td style={{padding:'13px 20px', textAlign:'right', color:'var(--text-muted)', fontSize:'17px'}}><Link href={`/builder?event=${e.event_id}`} style={{color:'inherit', display:'inline-flex', lineHeight:'0'}}><Icon name="chevron-right" /></Link></td>
+                    <td style={{padding:'13px 20px', textAlign:'right', color:'var(--text-muted)', fontSize:'17px'}}><Link href={`/admin/builder?event=${e.event_id}`} style={{color:'inherit', display:'inline-flex', lineHeight:'0'}}><Icon name="chevron-right" /></Link></td>
                   </tr>
                 );
               })}

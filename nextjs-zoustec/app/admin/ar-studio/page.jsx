@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Icon } from '../../components/Icon';
-import { adminApi, adminUpload, AuthRequired, loginUrl } from '../../lib/admin-client';
+import { Icon } from '../../../components/Icon';
+import { adminApi, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
 
-const GlbPreview = dynamic(() => import('../../components/GlbPreview'), { ssr: false });
+const GlbPreview = dynamic(() => import('../../../components/GlbPreview'), { ssr: false });
 
 const STATUS_META = {
   pending: { label: '排隊中…', color: 'var(--warning-600)' },
@@ -30,7 +30,7 @@ export default function Page() {
 
   function note(m) { setFlash(m); setTimeout(() => setFlash(''), 2500); }
   function guard(e) {
-    if (e instanceof AuthRequired) { router.replace(loginUrl('/ar-studio')); return true; }
+    if (e instanceof AuthRequired) { router.replace(loginUrl('/admin/ar-studio')); return true; }
     return false;
   }
   function pick(job) {
@@ -135,12 +135,12 @@ export default function Page() {
 
   {/* ── Toolbar ───────────────────────────────────────────────────────── */}
   <div className="editor-topbar" style={{height:'60px', flex:'0 0 auto', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', padding:'0 22px', gap:'12px'}}>
-    <Link href="/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
+    <Link href="/admin/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
     <span style={{width:'34px', height:'34px', borderRadius:'9px', background:'linear-gradient(145deg,#6FCDE8,#0E7490)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'17px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="sparkles" /></span></span>
     <div><div style={{fontSize:'15px', fontWeight:'800', color:'var(--text-strong)'}}>AR Studio · AI 3D 生成</div><div style={{fontSize:'11.5px', color:'var(--text-muted)'}}>上傳 2D 圖 → AI 生成 3D → 於網站產生器指派給任務</div></div>
     <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'10px'}}>
       {flash && <span style={{fontSize:'12.5px', fontWeight:'700', color:'var(--success-600)'}}>{flash}</span>}
-      <Link href="/builder" style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 15px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span>到產生器指派</Link>
+      <Link href="/admin/builder" style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 15px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span>到產生器指派</Link>
     </div>
   </div>
 
@@ -236,7 +236,7 @@ export default function Page() {
         <div style={{display:'flex', alignItems:'center', gap:'11px', padding:'12px', borderRadius:'10px', border:'1.5px solid var(--primary-600)', background:'var(--primary-50)'}}>
           <span style={{width:'32px', height:'32px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span></span>
           <div style={{flex:'1'}}><div style={{fontSize:'12.5px', fontWeight:'700', color:'var(--primary-800)'}}>指派給任務</div><div style={{fontSize:'11px', color:'var(--primary-700)'}}>網站產生器 → 點任務 → 3D 模型下拉選單</div></div>
-          <Link href="/builder" style={{color:'var(--primary-600)', fontSize:'16px', display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-right" /></Link>
+          <Link href="/admin/builder" style={{color:'var(--primary-600)', fontSize:'16px', display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-right" /></Link>
         </div>
       </>) : (
         <div style={{fontSize:'12.5px', color:'var(--text-subtle)', lineHeight:1.6}}>選擇左側一筆生成紀錄，或上傳新圖片。</div>

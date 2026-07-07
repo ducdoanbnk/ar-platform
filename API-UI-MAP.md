@@ -23,9 +23,9 @@
 | **02 `/builder/new`** wizard tạo sự kiện | `POST /api/admin/events` (slug, name, event_type: city\|hiking\|shopping, config) | ✅ có sẵn |
 | **02 `/builder`** editor block + tasks | `PATCH /api/admin/events/{id}` (config JSONB = content blocks) · tasks CRUD `GET/POST /api/admin/events/{id}/tasks`, `PATCH/DELETE /api/admin/tasks/{id}` | ✅ có sẵn |
 | 02 xuất template | `POST /api/admin/events/{id}/export-bundle` · export-keys list/revoke | ✅ có sẵn |
-| **03 `/ar-studio`** | `POST/GET /api/model3d/jobs`, `GET/PATCH/DELETE /api/model3d/jobs/{id}` (engine: mock \| meshy) | ✅ có sẵn |
+| **03 `/admin/ar-studio`** | `POST/GET /api/model3d/jobs`, `GET/PATCH/DELETE /api/model3d/jobs/{id}` (engine: mock \| meshy) | ✅ có sẵn |
 | **04 `/experience/*`** login→map→ar→rewards | `POST /api/auth/line` · `GET /api/me/events` · `GET /api/me/events/{id}/tasks` · `POST /api/me/tasks/{id}/complete` (`{qr_code}` / `{lat,lng}`) · `GET /api/me/events/{id}/progress` | ✅ có sẵn |
-| **05 `/console`** KPI + bar chart + plans + bảng khách | `GET /api/platform/overview?months=6` — tenants / totals / plans / monthly | ✅ **mở rộng** (thêm plan+mrr_ntd: migration 0004, PATCH tenants nhận `plan`, `mrr_ntd`) |
+| **05 `/admin/console`** KPI + bar chart + plans + bảng khách | `GET /api/platform/overview?months=6` — tenants / totals / plans / monthly | ✅ **mở rộng** (thêm plan+mrr_ntd: migration 0004, PATCH tenants nhận `plan`, `mrr_ntd`) |
 | 05 quản lý tenant | `GET/POST /api/platform/tenants`, `PATCH /api/platform/tenants/{id}` | ✅ có sẵn |
 | **06 `/` (portal — trang chủ; `/portal` redirect về `/`)** danh sách sự kiện công khai | `GET /api/public/events[?event_type=city\|hiking\|shopping]` | ✅ **mới thêm** |
 | Branding pre-login (white-label) | `GET /api/public/tenants/{slug}/branding` · `GET /api/public/domains/{domain}` | ✅ có sẵn |

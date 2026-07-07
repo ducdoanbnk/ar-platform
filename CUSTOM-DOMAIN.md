@@ -50,7 +50,7 @@ cuối là domain của khách.
 - Unique → một domain chỉ thuộc một tenant; tenant khác cố gắn domain đã có
   chủ sẽ nhận `409 domain_taken`.
 
-### 2. Tự phục vụ — `/dashboard/branding`
+### 2. Tự phục vụ — `/admin/dashboard/branding`
 
 - Khách nhập domain vào ô 自訂網域 → `PATCH /api/admin/branding`
   (`custom_domain` hoặc `clear_custom_domain: true` để gỡ).
@@ -94,7 +94,7 @@ Tầng duy nhất nằm ngoài code, làm **một lần cho mỗi domain**:
 
 | Bước | Ai làm | Việc |
 |---|---|---|
-| DNS | Khách | Thêm **CNAME** `vinh.concept.com → zoustec-frontend.onrender.com` (hướng dẫn hiện sẵn trong `/dashboard/branding`) |
+| DNS | Khách | Thêm **CNAME** `vinh.concept.com → zoustec-frontend.onrender.com` (hướng dẫn hiện sẵn trong `/admin/dashboard/branding`) |
 | Khai báo | Platform | Render → zoustec-frontend → Settings → **Custom Domains** → Add domain. Render verify DNS rồi **tự cấp TLS** (Let's Encrypt) |
 
 Không khai báo với Render thì request không bao giờ tới app (Render định

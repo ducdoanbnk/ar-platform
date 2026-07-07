@@ -18,7 +18,7 @@ export default function Page() {
     (async () => {
       const params = new URLSearchParams(window.location.search);
       const isPlatform = params.get('mode') === 'platform';
-      const dest = params.get('next') || (isPlatform ? '/console' : '/dashboard');
+      const dest = params.get('next') || (isPlatform ? '/admin/console' : '/admin/dashboard');
       setPlatform(isPlatform);
       setNext(dest);
       // Already signed in → straight through.
@@ -43,7 +43,7 @@ export default function Page() {
     setBusy(true); setError('');
     try {
       await fn();
-      router.replace(next || (platform ? '/console' : '/dashboard'));
+      router.replace(next || (platform ? '/admin/console' : '/admin/dashboard'));
     } catch (e) {
       setError(e.code === 'not_admin' ? e.message : e.status === 403 ? '此帳號沒有管理權限' : e.message || '登入失敗');
     } finally { setBusy(false); }
@@ -94,7 +94,7 @@ export default function Page() {
     )}
 
     <div style={{marginTop:'22px', paddingTop:'16px', borderTop:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-      <button onClick={() => { setPlatform(!platform); setError(''); setNext(!platform ? '/console' : '/dashboard'); }}
+      <button onClick={() => { setPlatform(!platform); setError(''); setNext(!platform ? '/admin/console' : '/admin/dashboard'); }}
         style={{background:'none', border:'none', color:'var(--primary-600)', fontSize:'12px', fontWeight:'700', cursor:'pointer', padding:0}}>
         {platform ? '← 客戶管理員登入' : 'Zoustec 平台管理員 →'}
       </button>

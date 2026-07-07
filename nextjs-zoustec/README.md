@@ -16,11 +16,11 @@ npm run dev
 | 路由 | 畫面 |
 | --- | --- |
 | `/` | 首頁 (畫面總覽) |
-| `/dashboard` | 客戶管理後台 |
-| `/builder` | 活動網站產生器 (含 AI 快速生成 + 選擇類型) |
-| `/ar-studio` | AI 3D 生成工具 |
+| `/admin/dashboard` | 客戶管理後台 |
+| `/admin/builder` | 活動網站產生器 (含 AI 快速生成 + 選擇類型) |
+| `/admin/ar-studio` | AI 3D 生成工具 |
 | `/experience` | WebAR 體驗 (LINE LIFF) |
-| `/console` | 平台管理後台 (Zoustec) |
+| `/admin/console` | 平台管理後台 (Zoustec) |
 | `/portal` | 活動入口網站 |
 
 ## 技術

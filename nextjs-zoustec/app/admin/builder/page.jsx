@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Icon } from '../../components/Icon';
-import { adminApi, adminDownload, adminUpload, AuthRequired, loginUrl } from '../../lib/admin-client';
-import EventSections from '../../components/event/EventSections';
-import { DEFAULT_SECTIONS, sectionBodyToText, textToSectionBody, SECTION_TYPE_META } from '../../lib/event-sections';
+import { Icon } from '../../../components/Icon';
+import { adminApi, adminDownload, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
+import EventSections from '../../../components/event/EventSections';
+import { DEFAULT_SECTIONS, sectionBodyToText, textToSectionBody, SECTION_TYPE_META } from '../../../lib/event-sections';
 
 const TYPE_META = {
   city: { icon: 'building-2', label: '城市探索', template: 'Urban Explorer' },
@@ -62,7 +62,7 @@ export default function Page() {
         try {
           const b = await adminApi('/api/admin/branding');
           if (b.theme_color) {
-            const { applyBrand } = await import('../../lib/brand');
+            const { applyBrand } = await import('../../../lib/brand');
             applyBrand(b.theme_color);
           }
         } catch { /* platform default */ }
@@ -71,14 +71,14 @@ export default function Page() {
           setModels(jobs.filter((j) => j.status === 'succeeded' && j.result_glb_url));
         } catch { /* AR Studio list is optional here */ }
       } catch (e) {
-        if (e instanceof AuthRequired) return router.replace(loginUrl('/builder'));
+        if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/builder'));
         setError(e.message);
       }
     })();
   }, [router]);
 
   function guard(e) {
-    if (e instanceof AuthRequired) { router.replace(loginUrl('/builder')); return true; }
+    if (e instanceof AuthRequired) { router.replace(loginUrl('/admin/builder')); return true; }
     return false;
   }
 
@@ -220,10 +220,10 @@ export default function Page() {
 
   {/* ── Toolbar ───────────────────────────────────────────────────────── */}
   <div className="editor-topbar" style={{height:'60px', flex:'0 0 auto', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', padding:'0 20px', gap:'18px'}}>
-    <Link href="/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
+    <Link href="/admin/dashboard" title="返回儀表板" style={{width:'34px', height:'34px', borderRadius:'8px', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:'17px', textDecoration:'none', flex:'0 0 auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-left" /></span></Link>
     <div style={{display:'flex', alignItems:'center', gap:'9px', fontSize:'14px', fontWeight:'700', color:'var(--text-strong)'}}><span style={{fontSize:'17px', color:'var(--primary-600)', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span>網站產生器</div>
     <div className="hide-mobile" style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'8px'}}>
-      <Link href="/builder/new" style={{display:'inline-flex', alignItems:'center', gap:'7px', fontSize:'12.5px', fontWeight:'600', color:'var(--text-muted)', textDecoration:'none'}}><span style={{width:'20px', height:'20px', borderRadius:'9999px', background:'var(--success-500)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'11px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="check" /></span></span>範本</Link>
+      <Link href="/admin/builder/new" style={{display:'inline-flex', alignItems:'center', gap:'7px', fontSize:'12.5px', fontWeight:'600', color:'var(--text-muted)', textDecoration:'none'}}><span style={{width:'20px', height:'20px', borderRadius:'9999px', background:'var(--success-500)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'11px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="check" /></span></span>範本</Link>
       <span style={{width:'22px', height:'1px', background:'var(--border-default)'}}></span>
       <span style={{display:'inline-flex', alignItems:'center', gap:'7px', fontSize:'12.5px', fontWeight:'700', color:'var(--primary-700)'}}><span style={{width:'20px', height:'20px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700'}}>2</span>內容</span>
       <span style={{width:'22px', height:'1px', background:'var(--border-default)'}}></span>
@@ -243,7 +243,7 @@ export default function Page() {
         <span style={{width:'64px', height:'64px', borderRadius:'18px', background:'var(--primary-50)', color:'var(--primary-600)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'30px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span></span>
         <div style={{fontSize:'19px', fontWeight:'800', color:'var(--text-strong)'}}>貴組織尚未有任何活動</div>
         <div style={{fontSize:'13.5px', color:'var(--text-muted)', maxWidth:'42ch', lineHeight:1.6}}>從精靈開始：輸入活動名稱、選擇類型（城市探索／登山步道／購物中心）— 系統會自動生成網站架構。</div>
-        <Link href="/builder/new" style={{display:'inline-flex', alignItems:'center', gap:'9px', height:'48px', padding:'0 26px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', fontSize:'14.5px', fontWeight:'700', textDecoration:'none', boxShadow:'var(--shadow-sm)'}}><span style={{fontSize:'17px', display:'inline-flex', lineHeight:'0'}}><Icon name="plus" /></span>建立第一個活動</Link>
+        <Link href="/admin/builder/new" style={{display:'inline-flex', alignItems:'center', gap:'9px', height:'48px', padding:'0 26px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', fontSize:'14.5px', fontWeight:'700', textDecoration:'none', boxShadow:'var(--shadow-sm)'}}><span style={{fontSize:'17px', display:'inline-flex', lineHeight:'0'}}><Icon name="plus" /></span>建立第一個活動</Link>
       </div>
     ) : (<>
 
@@ -354,7 +354,7 @@ export default function Page() {
         {taskForm.glbKey === 'custom' && (
           <input value={taskForm.glbUrl} onChange={(e) => setTaskForm({ ...taskForm, glbUrl: e.target.value })} placeholder="/media/…/model.glb" style={{width:'100%', height:'38px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'12px', color:'var(--text-body)', fontFamily:'var(--font-mono)', marginBottom:'6px', outline:'none'}} />
         )}
-        <div style={{fontSize:'10.5px', color:'var(--text-subtle)', marginBottom:'12px', lineHeight:1.5}}>想用自己的吉祥物？<Link href="/ar-studio" style={{color:'var(--primary-600)', fontWeight:'700'}}>前往 AR Studio 上傳 2D 圖生成 3D →</Link></div>
+        <div style={{fontSize:'10.5px', color:'var(--text-subtle)', marginBottom:'12px', lineHeight:1.5}}>想用自己的吉祥物？<Link href="/admin/ar-studio" style={{color:'var(--primary-600)', fontWeight:'700'}}>前往 AR Studio 上傳 2D 圖生成 3D →</Link></div>
 
         <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>AR 目標圖（相機對準的印刷圖）</label>
         <select value={taskForm.targetKey} onChange={(e) => onTargetSelect(e.target.value)}

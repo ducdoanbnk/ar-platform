@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon } from '../../../components/Icon';
-import AdminShell from '../../../components/admin/AdminShell';
-import { adminApi, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
+import { Icon } from '../../../../components/Icon';
+import AdminShell from '../../../../components/admin/AdminShell';
+import { adminApi, adminUpload, AuthRequired, loginUrl } from '../../../../lib/admin-client';
 
 const PRESETS = ['#0E7490', '#DC2626', '#16A34A', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#4F46E5'];
 
@@ -23,7 +23,7 @@ export default function Page() {
         setBrand(b);
         setForm({ logo_url: b.logo_url || '', theme_color: b.theme_color || '#0E7490', custom_domain: b.custom_domain || '' });
       } catch (e) {
-        if (e instanceof AuthRequired) return router.replace(loginUrl('/dashboard/branding'));
+        if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding'));
         setError(e.message);
       }
     })();
@@ -40,7 +40,7 @@ export default function Page() {
       const out = await adminUpload('/api/admin/media', fd);
       setForm({ ...form, logo_url: out.url });
       note('Logo 已上傳 — 按「儲存」生效');
-    } catch (e) { if (e instanceof AuthRequired) return router.replace(loginUrl('/dashboard/branding')); setError(e.message); }
+    } catch (e) { if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding')); setError(e.message); }
     finally { setBusy(''); }
   }
 
@@ -58,7 +58,7 @@ export default function Page() {
       const b = await adminApi('/api/admin/branding', { method: 'PATCH', body });
       setBrand(b);
       note('已儲存 ✓ — 活動網站即刻套用');
-    } catch (e) { if (e instanceof AuthRequired) return router.replace(loginUrl('/dashboard/branding')); setError(e.message); }
+    } catch (e) { if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding')); setError(e.message); }
     finally { setBusy(''); }
   }
 

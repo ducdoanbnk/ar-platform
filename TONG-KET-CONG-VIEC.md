@@ -46,7 +46,7 @@ account LINE thật của Đức là tenant_admin). Dev admin: `admin-bnk`,
 5. **Spec §VII/§VIII khép kín**: sections theo loại sự kiện (city/hiking/
    shopping), upload ảnh hero, branding end-to-end (1 màu → palette 5 shade,
    CSS vars), website sự kiện SSR `/e/{tenant}/{event}`, custom domain
-   tự phục vụ ở `/dashboard/branding` + middleware Host→tenant.
+   tự phục vụ ở `/admin/dashboard/branding` + middleware Host→tenant.
 6. **Deploy production**: Render Blueprint + Neon, PoC 4/4 nghiệm thu bằng
    LINE thật trên URL vĩnh viễn.
 7. **Custom domain chạy thật** (session 2026-07-07): FreeDNS `vinh-bnk.mooo.com`
@@ -62,6 +62,11 @@ account LINE thật của Đức là tenant_admin). Dev admin: `admin-bnk`,
 | `896bd46` | Viết CUSTOM-DOMAIN.md (phương pháp + quyết định thiết kế + nâng cấp SaaS) |
 | `3e53ae7` | **2 bug fix lớn**: (1) GET /api/admin/branding thiếu `custom_domain` → form rỗng khi reload; (2) **media chuyển vào DB** — bảng `media_assets` (bytea, RLS, migration 0005), serve tại `/media/db/{id}` cache immutable. Lý do: disk Render free là ephemeral (redeploy/ngủ-dậy là mất file hero/logo/.mind). +2 test hồi quy (66/66) |
 | `3f240ac` | **Chuyển region Oregon → Singapore** (render.yaml `region: singapore`). Region là immutable → đã XÓA 2 service và Manual Sync Blueprint tạo lại; env `sync:false` nhập tay lại; gắn lại custom domain. Kết quả: 1 query DB từ +1.4s → ~0ms; API nhanh gấp ~12 lần |
+
+Ngoài ra (sau `3f240ac`): **mọi trang quản trị dời vào `/admin/*`** —
+`/admin/dashboard` (+`/branding`, `/members`), `/admin/builder` (+`/new`),
+`/admin/ar-studio`, `/admin/console`. URL cũ (bookmark, liff.state cũ) vẫn
+sống nhờ redirect 307 trong `next.config.mjs`.
 
 Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Render↔Neon
 (nặng nhất, đã sửa), (2) cold start free tier (chưa sửa — xem mục 5),
@@ -94,7 +99,7 @@ Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Re
 
 ## 5. Chưa làm / tùy chọn (theo độ ưu tiên)
 
-1. **Re-upload ảnh hero BnK** qua /builder trên production (URL cũ trỏ disk đã
+1. **Re-upload ảnh hero BnK** qua /admin/builder trên production (URL cũ trỏ disk đã
    chết; ảnh mới sẽ vào DB — vĩnh viễn). Logo tương tự nếu từng up.
 2. **Keep-alive chống cold start**: cron-job.org (free) ping
    `GET /readyz` (backend) + `GET /` (frontend) mỗi 5–10 phút, GIỚI HẠN khung
