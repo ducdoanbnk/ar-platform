@@ -93,6 +93,7 @@ Tests: 67/67.
 | `832d66e` | Console Zoustec: bỏ menu chết (客戶/全平台活動/流量/營收/設定 — chưa có màn), 入口網站 thành link thật → /portal, bottom nav mobile thêm 登出; dọn chuông/篩選/dropdown giả |
 | `14b8349` | **Chuẩn hóa ngôn ngữ toàn code**: comment tiếng Việt → tiếng Anh (~46 chỗ); mọi message lỗi user-facing (55 ApiError backend + admin-client) → tiếng Trung phồn thể; `error.code` giữ tiếng Anh. QUY TẮC từ nay: comment = EN, text/lỗi hiển thị = zh-TW, docs .md = VI |
 | `c995f5b` | **Chốt quy trình channel trọn gói** (CUSTOM-DOMAIN.md): khách KHÔNG phải tự tạo channel — Zoustec tạo hộ từ account mình, **mỗi khách 1 provider riêng đặt tên khách** (quy định LINE TW cho integrator; userId cấp theo provider, channel không chuyển provider được); khách có OA riêng thì mời Zoustec làm Admin provider của họ. Không mâu thuẫn spec (§III.4 chỉ đòi quy trình cho người không phải kỹ sư) |
+| `7493047` | **Admin khách bỏ LINE login → email/password** (spec chỉ bắt LINE cho người chơi): console cấp tài khoản từ modal 白標設定 (mật khẩu tạm hiện 1 lần, bắt đổi lần đầu — token giữ memory tới khi đổi xong), nút 新增客戶 tạo tenant; migration 0008 (members.email/password_hash/must_change_password); /admin/login thành form email/password (dev-mode giữ). Tests 71/71 |
 
 Nghiệm thu trong session: hệ thống AR 2 bước chạy thật trên LINE iOS; BnK
 white-label trọn vẹn (domain riêng + LINE channel riêng, header LIFF hiện
@@ -157,9 +158,8 @@ Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Re
 5. Nâng cấp SaaS (đã ghi trong CUSTOM-DOMAIN.md): tự động khai báo domain qua
    Render API, xác minh sở hữu domain bằng TXT, wildcard `{slug}.zoustec.app`,
    LIFF channel riêng từng tenant.
-6. Khác: nút "新增客戶" trên console (hiện tạo tenant qua API), media sang
-   Cloudflare R2 khi dung lượng lớn, Meshy API key cho AI-3D thật, share-links
-   panel trong builder.
+6. Khác: media sang Cloudflare R2 khi dung lượng lớn, Meshy API key cho
+   AI-3D thật, share-links panel trong builder.
 
 ## 6. Chạy local
 
