@@ -59,7 +59,7 @@ export default function Page() {
   }
   function pick(job) {
     setSel(job);
-    setAdjust(job ? { scale: job.params?.scale ?? 0.4, color_tint: job.params?.color_tint || '' } : null);
+    setAdjust(job ? { scale: job.params?.scale ?? 0.4, color_tint: job.params?.color_tint || '', name: job.name || '' } : null);
   }
 
   async function refresh(selectId) {
@@ -150,6 +150,7 @@ export default function Page() {
     try {
       const body = { scale: Number(adjust.scale) || 0.4 };
       if (adjust.color_tint) body.color_tint = adjust.color_tint;
+      if (adjust.name.trim() && adjust.name.trim() !== sel.name) body.name = adjust.name.trim();
       const updated = await adminApi(`/api/admin/model3d/jobs/${sel.id}`, { method: 'PATCH', body });
       setJobs(jobs.map((j) => (j.id === updated.id ? updated : j)));
       pick(updated);
@@ -321,6 +322,9 @@ export default function Page() {
         </Step>
 
         <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', margin:'18px 0 12px'}}>調整</div>
+        <div style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', marginBottom:'7px'}}>名稱（顯示於產生器下拉選單）</div>
+        <input value={adjust.name} onChange={(e) => setAdjust({ ...adjust, name: e.target.value })} maxLength={255}
+          style={{width:'100%', height:'38px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 11px', fontSize:'13px', color:'var(--text-strong)', outline:'none', marginBottom:'16px'}} />
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'9px'}}><span style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)'}}>AR 比例</span><span style={{fontSize:'12px', fontWeight:'700', color:'var(--primary-600)', fontFamily:'var(--font-mono)'}}>{Number(adjust.scale).toFixed(1)}×</span></div>
         <input type="range" min="0.1" max="2" step="0.1" value={adjust.scale} onChange={(e) => setAdjust({ ...adjust, scale: e.target.value })} style={{width:'100%', marginBottom:'18px', accentColor:'var(--primary-600)'}} />
 

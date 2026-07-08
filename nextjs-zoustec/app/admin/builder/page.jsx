@@ -154,7 +154,9 @@ export default function Page() {
       radius_m: t.radius_m || 100,
       glbUrl,
       targetUrl,
-      glbKey: glbUrl === '/models/mascot.glb' ? 'demo' : glbJob ? `job:${glbJob.id}` : 'custom',
+      // Job match first: with the mock engine every job serves the same GLB
+      // file, so testing the demo URL first would swallow AI jobs into "demo".
+      glbKey: glbJob ? `job:${glbJob.id}` : glbUrl === '/models/mascot.glb' ? 'demo' : 'custom',
       targetKey: targetUrl === '/targets/demo.mind' ? 'demo' : tgtJob ? `job:${tgtJob.id}` : 'custom',
       scale: t.ar_config?.scale ?? 0.4,
     });

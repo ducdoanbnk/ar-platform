@@ -50,7 +50,8 @@ async def test_model3d_full_flow_with_mock_provider(client, demo):
         if job["status"] in ("succeeded", "failed"):
             break
     assert job["status"] == "succeeded", job
-    assert job["result_glb_url"] == "/models/mascot.glb"
+    # Mock serves the bundled GLB with a per-job query suffix (see provider).
+    assert job["result_glb_url"].startswith("/models/mascot.glb?m=")
 
     # Adjustments (spec: color/scale) round-trip into params.
     adjusted = await client.patch(

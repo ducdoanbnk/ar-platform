@@ -82,7 +82,13 @@ class MockModel3DProvider(Model3DProvider):
         self._polls[provider_job_id] = seen + 1
         if seen + 1 >= self.POLLS_UNTIL_DONE:
             self._polls.pop(provider_job_id, None)
-            return PollResult(status="succeeded", glb_url=self.RESULT_GLB_URL)
+            # Unique-per-job URL (same file; static serving ignores the query)
+            # so the builder can tell WHICH job a task's model came from —
+            # otherwise every mock job collapses into the "demo" option.
+            suffix = provider_job_id.removeprefix("mock-")[:8]
+            return PollResult(
+                status="succeeded", glb_url=f"{self.RESULT_GLB_URL}?m={suffix}"
+            )
         return PollResult(status="processing")
 
 
