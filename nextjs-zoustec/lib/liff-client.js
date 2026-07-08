@@ -59,15 +59,43 @@ export async function api(path, { method = 'GET', body } = {}) {
 /** True when a real LIFF ID is configured (production LINE path). */
 export const hasLiff = () => Boolean(LIFF_ID);
 
+/** Which LIFF app should run here? Tenant's own app (white-label plan) wins,
+ * platform's shared app is the fallback. Resolution order:
+ *   1. tenant slug → public branding (line_liff_id)
+ *   2. current host → custom-domain lookup (tenant LIFF endpoints point at
+ *      the customer's domain, so the host identifies the app on OAuth return)
+ *   3. platform NEXT_PUBLIC_LIFF_ID
+ * Never throws — always falls back. */
+export async function resolveLiffId(tenant) {
+  try {
+    if (tenant) {
+      const res = await fetch(`/api/public/tenants/${tenant}/branding`);
+      if (res.ok) {
+        const b = await res.json();
+        if (b.line_liff_id) return b.line_liff_id;
+      }
+      return LIFF_ID;
+    }
+    const res = await fetch(`/api/public/domains/${window.location.hostname}`);
+    if (res.ok) {
+      const b = await res.json();
+      if (b.line_liff_id) return b.line_liff_id;
+    }
+  } catch { /* platform fallback */ }
+  return LIFF_ID;
+}
+
 let _liffPromise = null;
 /** Init the LIFF SDK once and cache it (promise-guarded — concurrent callers
- * share one init; a second liff.init would throw). Null when no LIFF ID. */
-export async function getLiff() {
-  if (!LIFF_ID) return null;
+ * share one init; a second liff.init would throw, so the first id wins).
+ * Null when no LIFF ID at all. */
+export async function getLiff(liffId) {
+  const id = liffId || LIFF_ID;
+  if (!id) return null;
   if (!_liffPromise) {
     _liffPromise = (async () => {
       const liff = (await import('@line/liff')).default;
-      await liff.init({ liffId: LIFF_ID });
+      await liff.init({ liffId: id });
       return liff;
     })().catch((e) => { _liffPromise = null; throw e; });
   }
@@ -76,7 +104,7 @@ export async function getLiff() {
 
 /** Login via LINE LIFF (real) — resolves the session payload. */
 export async function loginWithLiff(tenant = DEFAULT_TENANT) {
-  const liff = await getLiff();
+  const liff = await getLiff(await resolveLiffId(tenant));
   const goLine = () => {
     // LINE returns to the endpoint (site root); record our way back.
     sessionStorage.setItem('zx_post_login', window.location.href);

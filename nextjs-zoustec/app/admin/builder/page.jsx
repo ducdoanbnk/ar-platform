@@ -27,11 +27,15 @@ const TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
  * that opens LINE → auto-login → jumps straight into this task's AR screen
  * with the secret pre-applied. Path-style (`/ID/path?query`) because the LIFF
  * endpoint URL is the site root. Falls back to a web URL without a LIFF ID. */
-function taskQrUrl(event, task) {
-  const params = new URLSearchParams({ tenant: TENANT, event: event.id, task: task.id });
+function taskQrUrl(event, task, brand) {
+  // Tenant thật lấy từ branding (env slug chỉ là fallback dev); LIFF app
+  // riêng của tenant (white-label plan) thắng app dùng chung.
+  const tenant = brand?.tenant_slug || TENANT;
+  const liffId = brand?.line_liff_id || LIFF_ID;
+  const params = new URLSearchParams({ tenant, event: event.id, task: task.id });
   if (task.qr_token) params.set('qr', task.qr_token);
-  return LIFF_ID
-    ? `https://liff.line.me/${LIFF_ID}/experience/login?${params}`
+  return liffId
+    ? `https://liff.line.me/${liffId}/experience/login?${params}`
     : `${window.location.origin}/experience/login?${params}`;
 }
 
@@ -46,6 +50,7 @@ export default function Page() {
   const [selectedTask, setSelectedTask] = useState(null); // null = event settings mode
   const [taskForm, setTaskForm] = useState(null);
   const [models, setModels] = useState([]); // succeeded AR-Studio jobs
+  const [brand, setBrand] = useState(null); // tenant slug + LIFF riêng (QR links)
   const [busy, setBusy] = useState('');
   const [flash, setFlash] = useState('');
   const [error, setError] = useState('');
@@ -62,6 +67,7 @@ export default function Page() {
         setTasks(await adminApi(`/api/admin/events/${ev.id}/tasks`));
         try {
           const b = await adminApi('/api/admin/branding');
+          setBrand(b);
           if (b.theme_color) {
             const { applyBrand } = await import('../../../lib/brand');
             applyBrand(b.theme_color);
@@ -198,7 +204,7 @@ export default function Page() {
   async function showQr(task) {
     setError('');
     try {
-      const url = taskQrUrl(event, task);
+      const url = taskQrUrl(event, task, brand);
       const QRCode = (await import('qrcode')).default;
       const dataUrl = await QRCode.toDataURL(url, { width: 1024, margin: 2, errorCorrectionLevel: 'M' });
       setQrModal({ task, dataUrl, url });

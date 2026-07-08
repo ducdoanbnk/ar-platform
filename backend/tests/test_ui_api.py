@@ -335,3 +335,28 @@ async def test_media_upload_stored_in_db_and_served(client, demo):
     assert resp.content == png
     assert resp.headers["content-type"] == "image/png"
     assert "immutable" in resp.headers.get("cache-control", "")
+
+
+# ------------------------------------------------------------------ per-tenant LIFF (white-label plan)
+
+
+async def test_login_ok_when_tenant_bound_to_own_liff(client, demo):
+    # White-label plan: tenant carries its own LIFF app. The auth chain (tenant
+    # channel first → platform channel fallback) must not break existing logins;
+    # dev tokens short-circuit before any channel check.
+    boss = (
+        await client.post("/api/auth/platform", json={"id_token": "dev::boss::Boss"})
+    ).json()["access_token"]
+    resp = await client.patch(
+        f"/api/platform/tenants/{demo['tenant_a'].id}",
+        headers=bearer(boss),
+        json={"line_liff_id": "2010999999-AbCdEfGh"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    token = await login(client, "alpha", "user-liff", "Liff User")
+    assert token
+
+    # Public surfaces expose the tenant's LIFF id so CTA/QR open the right app.
+    site = (await client.get("/api/public/site/alpha")).json()
+    assert site["branding"]["line_liff_id"] == "2010999999-AbCdEfGh"

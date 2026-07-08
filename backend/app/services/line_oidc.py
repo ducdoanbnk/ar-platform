@@ -27,7 +27,11 @@ class LineIdentity:
     picture_url: str | None = None
 
 
-async def verify_line_id_token(id_token: str) -> LineIdentity:
+async def verify_line_id_token(id_token: str, channel_id: str | None = None) -> LineIdentity:
+    """Verify against `channel_id` (a tenant's own LINE channel — white-label
+    plan) or the platform's shared channel when omitted. LINE rejects tokens
+    whose audience doesn't match client_id, so per-tenant channels isolate
+    logins for free."""
     settings = get_settings()
 
     if settings.auth_dev_mode and id_token.startswith("dev::"):
@@ -39,7 +43,8 @@ async def verify_line_id_token(id_token: str) -> LineIdentity:
             display_name=parts[2] if len(parts) > 2 else parts[1],
         )
 
-    if not settings.line_channel_id:
+    client_id = channel_id or settings.line_channel_id
+    if not client_id:
         raise ApiError(
             503,
             "line_not_configured",
@@ -50,7 +55,7 @@ async def verify_line_id_token(id_token: str) -> LineIdentity:
         try:
             resp = await client.post(
                 settings.line_verify_url,
-                data={"id_token": id_token, "client_id": settings.line_channel_id},
+                data={"id_token": id_token, "client_id": client_id},
             )
         except httpx.HTTPError as exc:
             logger.warning("line_verify_unreachable", error=str(exc))

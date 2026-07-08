@@ -167,6 +167,48 @@ gặp giới hạn này. Nhược điểm A record: Render đổi IP thì phải
    (Render API trả trạng thái) thay vì khách tự đoán.
 3. **Wildcard subdomain nền tảng**: tặng mỗi tenant `{{slug}}.zoustec.app`
    chạy cùng cơ chế, không cần khách có domain.
-4. **LIFF channel riêng theo tenant**: cột `line_liff_id` đã có sẵn trong
-   payload branding — khi khách có LINE channel riêng, permalink dùng LIFF
-   ID của họ → white-label trọn vẹn cả trong LINE.
+4. ~~LIFF channel riêng theo tenant~~ → **ĐÃ LÀM** (2026-07-08, xem mục dưới).
+
+## LIFF riêng theo tenant — white-label trọn vẹn trong LINE
+
+Mặc định mọi tenant dùng chung LIFF app của platform → trải nghiệm trong
+LINE chạy trên `zoustec-frontend.onrender.com` (header LIFF hiện domain đó).
+Gói white-label: tenant gắn **LINE channel + LIFF app của riêng họ** với
+Endpoint URL = domain khách → header LIFF hiện domain khách, OA/chatbot
+mang tên khách.
+
+### Cách hệ thống chọn LIFF app (fallback dây chuyền, không cấu hình gì thêm)
+
+- **CTA 開始旅程 / QR in từ builder**: `branding.line_liff_id ||
+  NEXT_PUBLIC_LIFF_ID` (EventSite, builder — builder cũng lấy tenant slug
+  thật từ branding thay vì env).
+- **Client `liff.init`**: `resolveLiffId(tenant?)` — tra branding theo
+  tenant, không có tenant thì tra host qua `/api/public/domains/{host}`
+  (endpoint của LIFF tenant chính là domain khách nên host nhận diện được
+  app khi LINE trả OAuth code về), cuối cùng fallback app chung. Dùng ở màn
+  login (parse tenant TRƯỚC init) và LiffOAuthCompleter ở root.
+- **Backend verify**: channel của tenant = `line_channel_id` hoặc suy từ
+  tiền tố LIFF ID (`{channelId}-{suffix}`); thử channel tenant trước,
+  **fallback channel platform** — vì member vào bằng app của tenant nhưng
+  tenant ADMIN vẫn login dashboard bằng app chung.
+
+### Các bước setup cho một khách (làm tay, ~10 phút — LINE không có API tạo channel)
+
+1. **Tạo channel**: [LINE Developers Console](https://developers.line.biz)
+   → provider CỦA KHÁCH (hoặc tạo provider mới mang tên khách) → Create
+   channel → **LINE Login** → điền tên/ảnh thương hiệu khách → tạo.
+2. **Tạo LIFF app** trong channel đó: tab LIFF → Add → Size **Full** →
+   **Endpoint URL = `https://<domain-khách>/`** (root!) → Scope `profile` +
+   `openid` → bật "LINE Login".
+3. Copy **LIFF ID** (dạng `1234567890-AbCdEfGh`).
+4. **Console platform** (`/admin/console`) → chọn tenant → ô "LIFF ID
+   (Option B — 客戶自有 LINE)" → dán → lưu. (Channel ID tự suy từ tiền tố
+   LIFF ID, không cần nhập.)
+5. Kiểm tra: mở website khách → 開始旅程 → link giờ là
+   `liff.line.me/<LIFF-của-khách>/...`; login xong header LIFF hiện domain
+   khách. Gỡ trắng nhãn = xóa ô LIFF ID trong console.
+
+Điều kiện tiên quyết: tenant đã gắn custom domain hoạt động (mục trên) —
+endpoint LIFF trỏ về domain đó. Lưu ý: đổi endpoint một LIFF app đang dùng
+sẽ ảnh hưởng NGƯỜI ĐANG login app đó; app riêng của khách thì độc lập hoàn
+toàn với app chung.

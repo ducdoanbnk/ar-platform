@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '../../../components/Icon';
 import EventSections from '../../../components/event/EventSections';
-import { api, ensureEvent, getLiff, hasLiff, loginDev, loginWithLiff, session } from '../../../lib/liff-client';
+import { api, ensureEvent, getLiff, hasLiff, loginDev, loginWithLiff, resolveLiffId, session } from '../../../lib/liff-client';
 
 const TYPE_LABEL = { city: '城市探索', hiking: '登山路線', shopping: '商場集點' };
 
@@ -21,29 +21,38 @@ export default function Page() {
 
   useEffect(() => {
     (async () => {
-      // LIFF links carry extra params inside `liff.state` and the SDK only
-      // unpacks them during liff.init() — so init FIRST, then read the URL.
-      if (hasLiff()) { try { await getLiff(); } catch { /* handled below */ } }
-
       // Deep-links:
       //   Portal card:  ?tenant=..&event=..
       //   Printed QR:   ?tenant=..&event=..&task=..&qr=TOKEN  → thẳng màn AR
-      const params = new URLSearchParams(window.location.search);
-      let qTenant = params.get('tenant');
-      let qEvent = params.get('event');
-      let qTask = params.get('task');
-      let qQr = params.get('qr');
-      // Fallback: parse liff.state ourselves in case the SDK hasn't rewritten
-      // the URL (timing differs across LINE versions / external browsers).
-      const rawState = params.get('liff.state');
-      if ((!qTenant || !qEvent || !qTask) && rawState) {
-        try {
-          const st = new URLSearchParams(decodeURIComponent(rawState).replace(/^[?/]+/, ''));
-          qTenant = qTenant || st.get('tenant');
-          qEvent = qEvent || st.get('event');
-          qTask = qTask || st.get('task');
-          qQr = qQr || st.get('qr');
-        } catch { /* ignore malformed state */ }
+      // Params có thể nằm trần trên URL hoặc gói trong `liff.state` (SDK chỉ
+      // unpack khi init) — parser tay dưới đây đọc được CẢ HAI, nên parse
+      // TRƯỚC init để biết tenant → chọn đúng LIFF app (white-label plan
+      // mỗi khách một app riêng).
+      const readParams = () => {
+        const params = new URLSearchParams(window.location.search);
+        let qTenant = params.get('tenant');
+        let qEvent = params.get('event');
+        let qTask = params.get('task');
+        let qQr = params.get('qr');
+        const rawState = params.get('liff.state');
+        if ((!qTenant || !qEvent || !qTask) && rawState) {
+          try {
+            const dec = decodeURIComponent(rawState);
+            const st = new URLSearchParams(dec.includes('?') ? dec.slice(dec.indexOf('?') + 1) : dec.replace(/^[?/]+/, ''));
+            qTenant = qTenant || st.get('tenant');
+            qEvent = qEvent || st.get('event');
+            qTask = qTask || st.get('task');
+            qQr = qQr || st.get('qr');
+          } catch { /* ignore malformed state */ }
+        }
+        return { qTenant, qEvent, qTask, qQr };
+      };
+
+      let { qTenant, qEvent, qTask, qQr } = readParams();
+      if (hasLiff()) {
+        try { await getLiff(await resolveLiffId(qTenant || session.tenant || undefined)); } catch { /* handled below */ }
+        // SDK rewrites the URL during init — re-read in case liff.state held more.
+        ({ qTenant, qEvent, qTask, qQr } = readParams());
       }
       const tgt = { tenant: qTenant || session.tenant || null, eventId: qEvent || null, taskId: qTask || null, qr: qQr || null };
       setTarget(tgt);

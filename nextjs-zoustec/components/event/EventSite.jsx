@@ -30,7 +30,8 @@ export default function EventSite({ site, linkBase }) {
   // customer's custom domain, where a relative link would put LINE's OAuth
   // redirectUri outside the LIFF endpoint scope (400 invalid url). Mobile
   // opens straight into LINE; desktop shows a QR modal (JoinCta).
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+  // White-label plan: the tenant's own LIFF app wins over the shared one.
+  const liffId = branding.line_liff_id || process.env.NEXT_PUBLIC_LIFF_ID;
   const joinQuery = `tenant=${branding.tenant_slug}&event=${event.id}`;
   const joinHref = liffId
     ? `https://liff.line.me/${liffId}/experience/login?${joinQuery}`

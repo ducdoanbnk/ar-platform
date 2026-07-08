@@ -23,11 +23,21 @@ from app.services.line_oidc import verify_line_id_token
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _tenant_channel_id(tenant: Tenant) -> str | None:
+    """Tenant's own LINE channel (white-label plan). A LIFF ID is always
+    `{channelId}-{suffix}`, so the channel can be derived when only the LIFF
+    ID was entered in the console."""
+    if tenant.line_channel_id:
+        return tenant.line_channel_id
+    if tenant.line_liff_id and "-" in tenant.line_liff_id:
+        return tenant.line_liff_id.split("-", 1)[0]
+    return None
+
+
 @router.post("/line", response_model=SessionResponse)
 async def login_with_line(body: LineLoginRequest) -> SessionResponse:
-    line = await verify_line_id_token(body.id_token)
-
-    # Resolve tenant first (tenants table is the tenancy root, not RLS-scoped).
+    # Resolve tenant first (tenants table is the tenancy root, not RLS-scoped):
+    # the token audience depends on WHICH LIFF app opened the experience.
     async with anonymous_session() as session:
         tenant = (
             await session.execute(
@@ -36,6 +46,17 @@ async def login_with_line(body: LineLoginRequest) -> SessionResponse:
         ).scalar_one_or_none()
     if tenant is None:
         raise ApiError(404, "tenant_not_found", "Unknown tenant.")
+
+    # Members arrive via the tenant's LIFF app when one is bound; tenant ADMINS
+    # sign in to the dashboard via the platform's shared LIFF. Accept either:
+    # try the tenant channel first, fall back to the platform channel.
+    tenant_channel = _tenant_channel_id(tenant)
+    try:
+        line = await verify_line_id_token(body.id_token, tenant_channel)
+    except ApiError as exc:
+        if tenant_channel is None or exc.status_code != 401:
+            raise
+        line = await verify_line_id_token(body.id_token)
 
     # Find-or-create the member inside the tenant's RLS scope.
     async with tenant_session(tenant.id) as session:

@@ -24,8 +24,11 @@ export default function LiffOAuthCompleter() {
     setActive(true);
     (async () => {
       try {
-        const { getLiff } = await import('../lib/liff-client');
-        const liff = await getLiff(); // init exchanges the code
+        const { getLiff, resolveLiffId } = await import('../lib/liff-client');
+        // The code must be exchanged by the SAME LIFF app that started the
+        // login. Each app returns to its own endpoint (tenant apps → the
+        // customer's domain), so the host identifies which app this is.
+        const liff = await getLiff(await resolveLiffId()); // init exchanges the code
         const ok = Boolean(liff?.isLoggedIn?.());
         if (ok) {
           // Destination: our own record (stored before liff.login), else the

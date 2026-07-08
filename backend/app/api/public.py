@@ -28,6 +28,8 @@ def _site_branding(tenant: Tenant) -> dict:
         "landing_title": brand.get("landing_title"),
         "landing_tagline": brand.get("landing_tagline"),
         "landing_hero": brand.get("landing_hero"),
+        # White-label plan: CTA/QR opens the tenant's own LIFF app when bound.
+        "line_liff_id": tenant.line_liff_id,
     }
 
 
