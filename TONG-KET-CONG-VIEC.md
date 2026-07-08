@@ -1,7 +1,7 @@
 # Tổng kết công việc — Zoustec AR Stamp Platform
 
 > File này để mở đầu session làm việc mới: trạng thái hiện tại, những gì đã
-> làm, còn gì chưa làm, và các "bẫy" đã biết. Cập nhật lần cuối: **2026-07-07**.
+> làm, còn gì chưa làm, và các "bẫy" đã biết. Cập nhật lần cuối: **2026-07-08**.
 >
 > Tài liệu chi tiết đi kèm: [TONG-QUAN-DU-AN.md](TONG-QUAN-DU-AN.md) (kiến trúc
 > + nghiệp vụ), [CUSTOM-DOMAIN.md](CUSTOM-DOMAIN.md) (phương pháp white-label
@@ -18,12 +18,14 @@
 | Backend | https://zoustec-backend.onrender.com — Render free, **region Singapore** |
 | Database | Neon free (ap-southeast-1 Singapore) — PostGIS + RLS, endpoint `ep-square-union-aoeiguy7.c-2` (**direct, không -pooler**) |
 | Custom domain demo | https://vinh-bnk.mooo.com → website tenant `bnk` (FreeDNS, A record `216.24.57.1`) |
-| LIFF | ID `2010613964-3UzmddVV`, channel `2010613964`, Endpoint URL = frontend root |
+| LIFF (platform, dùng chung) | ID `2010613964-3UzmddVV`, channel `2010613964`, Endpoint = frontend root |
+| LIFF riêng BnK (white-label) | ID `2010638570-ZXXAqde5`, channel `2010638570`, Endpoint = `https://vinh-bnk.mooo.com/` — đã chạy thật trong LINE |
+| Console Zoustec | `/zoustec/console` — login email/password tại `/zoustec/login` (`admin@zoustec.tw` + env `PLATFORM_ADMIN_PASSWORD`; dev fallback `platform-boss`) |
 | LIFF permalink | https://liff.line.me/2010613964-3UzmddVV |
 | GitHub | git@github-work:ducdoanbnk/ar-platform.git (SSH alias `github-work`) |
 | Deploy | Render Blueprint (`render.yaml`) — push main = auto deploy cả 2 service |
 | Hiệu năng đo được | API có DB ~0.2–0.45s (trước khi chuyển region: 1.5–2.7s) |
-| Tests backend | 66/66 (`backend && .venv/bin/python -m pytest tests/ -q`, cần Docker db-test port 5434) |
+| Tests backend | 70/70 (`backend && .venv/bin/python -m pytest tests/ -q`, cần Docker db-test port 5434 — Docker Desktop phải bật) |
 
 3 tenant seed: `taipei` (#0ea5e9) / `riverside-mall` (#f59e0b) / `bnk` (#dc2626 —
 account LINE thật của Đức là tenant_admin). Dev admin: `admin-bnk`,
@@ -79,6 +81,26 @@ màn khác). CSS `.app-main > .editor-shell` cho editor lồng trong shell.
 (middleware rewrite → `/e/{tenant}/{slug}`). Chi tiết: CUSTOM-DOMAIN.md §4b.
 Tests: 67/67.
 
+## 3b. Session 2026-07-08 — việc đã làm (commit `766ec06`…`a5410d0`)
+
+| Commit | Nội dung |
+|---|---|
+| `766ec06` | **Luồng AR 2 bước**: nhiệm vụ QR/hybrid vào từ map đi qua màn quét QR in-app (getUserMedia + `jsqr` — scanCodeV2 không ổn định mọi client) rồi mới tới AR; quét nhầm standee trạm khác → tự chuyển nhiệm vụ; mã sai khi chụp → quay lại bước quét. Deep-link `?qr=` bỏ qua bước 1. Xóa thanh demo 1-2-3-4; màn login lấy banner hero của khách (fix đọc `config.heroImage` vs `hero_image` phẳng) |
+| `3d9864c` | **LIFF riêng theo tenant** (white-label trọn trong LINE): backend verify id_token thử channel tenant (suy từ tiền tố LIFF ID) → fallback channel platform (admin vẫn login app chung); client `resolveLiffId(tenant?)` tra branding → host → fallback; CTA/QR builder dùng LIFF ID tenant (kèm vá QR ghi cứng env slug). **Đã nghiệm thu thật với channel BnK** |
+| `741650c` | **Console dời `/admin/console` → `/zoustec/console`** + login **email/password** tại `/zoustec/login` (bảng platform_admins thêm email/password_hash — scrypt stdlib, migration 0006; account seed/rotate từ env `PLATFORM_ADMIN_EMAIL`/`PASSWORD` mỗi lần khởi động). `/admin/login` chỉ còn cho khách; redirect URL cũ |
+| `2aeca0e` | Deliverable spec mục 5: đánh giá tự động hóa LIFF — tạo channel ❌ không có API (thủ công), LIFF app ✅ LIFF Server API (ghi vào CUSTOM-DOMAIN.md) |
+| `a5410d0` | **Nút 自動建立 LIFF** trong console: `POST /api/platform/tenants/{id}/liff` — phát hành channel access token (v3 fallback v2) từ Channel ID + Secret (cột `line_channel_secret`, migration 0007, không bao giờ trả ra ngoài) → tạo LIFF app endpoint = custom domain, hoặc cập nhật endpoint app hiện có khi khách đổi domain |
+
+Nghiệm thu trong session: hệ thống AR 2 bước chạy thật trên LINE iOS; BnK
+white-label trọn vẹn (domain riêng + LINE channel riêng, header LIFF hiện
+`vinh-bnk.mooo.com`); console tách cửa Zoustec.
+
+**Chẩn đoán "sập" trên free tier** (giải thích cho user 2 lần): (1) mỗi lần
+push = Render free dừng bản cũ rồi mới build bản mới → **cửa sổ chết 1–3
+phút mỗi deploy** (không zero-downtime); (2) cold start 30–60s sau 15 phút
+vắng; (3) đừng quên Render có lịch bảo trì công bố trên banner dashboard.
+→ Khi demo: gom thay đổi push 1 lần; thương mại: Render Starter ~7 USD/service.
+
 Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Render↔Neon
 (nặng nhất, đã sửa), (2) cold start free tier (chưa sửa — xem mục 5),
 (3) thiếu loading UX (chưa làm).
@@ -102,6 +124,10 @@ Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Re
 - **Middleware custom domain**: chỉ chạy trên `/`, cache 60s (cả kết quả rỗng),
   fail-open về portal. Host platform (onrender/localhost/trycloudflare/vercel)
   bỏ qua.
+- **LIFF theo tenant — chuỗi fallback**: CTA/QR dùng `branding.line_liff_id ||
+  NEXT_PUBLIC_LIFF_ID`; client init qua `resolveLiffId(tenant?)` (branding →
+  host → app chung); backend verify thử channel tenant trước rồi channel
+  platform. LIFF ID luôn dạng `{channelId}-{suffix}` → channel suy từ tiền tố.
 - **NEXT_PUBLIC_* + BACKEND_INTERNAL_URL nướng lúc BUILD** (Docker ARG→ENV):
   đổi biến trên Render phải "Save, rebuild, and deploy", restart không ăn.
 - **Render Blueprint**: biến `sync:false` KHÔNG được tạo khi sync tạo service
@@ -110,6 +136,10 @@ Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Re
 
 ## 5. Chưa làm / tùy chọn (theo độ ưu tiên)
 
+0. **Kiểm tra 2 việc user có thể chưa làm**: (a) set env
+   `PLATFORM_ADMIN_PASSWORD` trên Render backend (chưa set thì /zoustec/login
+   dùng dev `platform-boss`); (b) test nút 自動建立 LIFF với Channel Secret
+   của channel BnK (2010638570).
 1. **Re-upload ảnh hero BnK** qua /admin/builder trên production (URL cũ trỏ disk đã
    chết; ảnh mới sẽ vào DB — vĩnh viễn). Logo tương tự nếu từng up.
 2. **Keep-alive chống cold start**: cron-job.org (free) ping
