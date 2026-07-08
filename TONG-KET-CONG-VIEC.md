@@ -90,6 +90,8 @@ Tests: 67/67.
 | `741650c` | **Console dời `/admin/console` → `/zoustec/console`** + login **email/password** tại `/zoustec/login` (bảng platform_admins thêm email/password_hash — scrypt stdlib, migration 0006; account seed/rotate từ env `PLATFORM_ADMIN_EMAIL`/`PASSWORD` mỗi lần khởi động). `/admin/login` chỉ còn cho khách; redirect URL cũ |
 | `2aeca0e` | Deliverable spec mục 5: đánh giá tự động hóa LIFF — tạo channel ❌ không có API (thủ công), LIFF app ✅ LIFF Server API (ghi vào CUSTOM-DOMAIN.md) |
 | `a5410d0` | **Nút 自動建立 LIFF** trong console: `POST /api/platform/tenants/{id}/liff` — phát hành channel access token (v3 fallback v2) từ Channel ID + Secret (cột `line_channel_secret`, migration 0007, không bao giờ trả ra ngoài) → tạo LIFF app endpoint = custom domain, hoặc cập nhật endpoint app hiện có khi khách đổi domain |
+| `832d66e` | Console Zoustec: bỏ menu chết (客戶/全平台活動/流量/營收/設定 — chưa có màn), 入口網站 thành link thật → /portal, bottom nav mobile thêm 登出; dọn chuông/篩選/dropdown giả |
+| `14b8349` | **Chuẩn hóa ngôn ngữ toàn code**: comment tiếng Việt → tiếng Anh (~46 chỗ); mọi message lỗi user-facing (55 ApiError backend + admin-client) → tiếng Trung phồn thể; `error.code` giữ tiếng Anh. QUY TẮC từ nay: comment = EN, text/lỗi hiển thị = zh-TW, docs .md = VI |
 
 Nghiệm thu trong session: hệ thống AR 2 bước chạy thật trên LINE iOS; BnK
 white-label trọn vẹn (domain riêng + LINE channel riêng, header LIFF hiện
