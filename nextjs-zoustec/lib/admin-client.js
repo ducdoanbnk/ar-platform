@@ -6,7 +6,7 @@
  * Admins sign in with LINE (same OIDC as end users — doc leaves admin auth
  * unspecified; platform choice: one auth mechanism, role-gated by RBAC).
  * Two independent sessions:
- *   tenant   — khách thuê (dashboard/builder), requires role=tenant_admin
+ *   tenant   — customer (dashboard/builder), requires role=tenant_admin
  *   platform — Zoustec (console), verified against platform_admins
  * Dev fallback (AUTH_DEV_MODE): sign in by seeded dev ID (admin-taipei…).
  */
@@ -68,7 +68,7 @@ async function loginWith(idToken, { platform = false } = {}) {
 export async function adminLoginLine({ platform = false } = {}) {
   const { getLiff } = await import('./liff-client');
   const liff = await getLiff();
-  if (!liff) throw new Error('LIFF chưa được cấu hình');
+  if (!liff) throw new Error('LIFF 尚未設定');
   // LINE returns to the ENDPOINT URL (site root); record where to come back to
   // ourselves — the SDK's redirectUri param is not always echoed back.
   const goLine = () => {

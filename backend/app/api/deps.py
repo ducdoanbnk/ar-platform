@@ -30,7 +30,7 @@ class AuthContext:
 
 def _bearer_token(authorization: str | None) -> str:
     if not authorization or not authorization.startswith("Bearer "):
-        raise ApiError(401, "unauthorized", "Missing bearer token.")
+        raise ApiError(401, "unauthorized", "缺少 Bearer Token。")
     return authorization.removeprefix("Bearer ").strip()
 
 
@@ -45,7 +45,7 @@ async def member_context(
 ) -> AsyncIterator[AuthContext]:
     """Any authenticated member of a tenant (end user or tenant admin)."""
     if identity.tenant_id is None:
-        raise ApiError(403, "forbidden", "A tenant-scoped session is required.")
+        raise ApiError(403, "forbidden", "此操作需要租戶身分的登入。")
     async with tenant_session(identity.tenant_id) as session:
         yield AuthContext(identity=identity, session=session)
 
@@ -55,7 +55,7 @@ async def tenant_admin_context(
 ) -> AsyncIterator[AuthContext]:
     """Tenant admin only."""
     if identity.tenant_id is None or identity.role != ROLE_TENANT_ADMIN:
-        raise ApiError(403, "forbidden", "Tenant admin role required.")
+        raise ApiError(403, "forbidden", "需要租戶管理員權限。")
     async with tenant_session(identity.tenant_id) as session:
         yield AuthContext(identity=identity, session=session)
 
@@ -65,7 +65,7 @@ async def platform_admin_context(
 ) -> AsyncIterator[AuthContext]:
     """Platform (master) admin only — cross-tenant session."""
     if identity.role != ROLE_PLATFORM_ADMIN:
-        raise ApiError(403, "forbidden", "Platform admin role required.")
+        raise ApiError(403, "forbidden", "需要平台管理員權限。")
     async with platform_admin_session() as session:
         yield AuthContext(identity=identity, session=session)
 
@@ -73,4 +73,4 @@ async def platform_admin_context(
 def require_same_tenant(ctx: AuthContext, tenant_id: uuid.UUID) -> None:
     """Extra query-layer guard for handlers that receive an explicit tenant id."""
     if ctx.identity.tenant_id != tenant_id:
-        raise ApiError(403, "forbidden", "Cross-tenant access denied.")
+        raise ApiError(403, "forbidden", "禁止跨租戶存取。")

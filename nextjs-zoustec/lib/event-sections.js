@@ -1,6 +1,6 @@
 /**
- * Config-driven event sections (spec §III.2: mỗi loại sự kiện tự sinh kiến
- * trúc website khác nhau). Content sống trong event.config.sections:
+ * Config-driven event sections (spec §III.2: each event type generates its
+ * own website architecture). Content lives in event.config.sections:
  *
  *   notice    {type, style?: 'warning', title, items: [string]}
  *   info-list {type, title, items: [{label, value}]}

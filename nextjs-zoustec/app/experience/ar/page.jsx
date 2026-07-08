@@ -19,8 +19,8 @@ const AR_STATUS_TEXT = {
   completed: 'AR 掃描完成！',
 };
 
-/** Printed standees encode the LIFF permalink (?tenant&event&task&qr, có thể
- * gói trong liff.state). Người dùng cũng có thể gõ token trần. */
+/** Printed standees encode the LIFF permalink (?tenant&event&task&qr, maybe
+ * wrapped in liff.state). Users may also type the bare token. */
 function parseQrText(text) {
   const t = (text || '').trim();
   if (!t) return { qr: '', taskId: null };
@@ -35,7 +35,7 @@ function parseQrText(text) {
       qs = new URLSearchParams(q);
     }
   } catch {
-    return { qr: t, taskId: null }; // không phải URL → token trần
+    return { qr: t, taskId: null }; // not a URL → bare token
   }
   return { qr: qs.get('qr') || '', taskId: qs.get('task') || null };
 }
@@ -57,8 +57,8 @@ export default function Page() {
     (async () => {
       if (!session.token || !session.taskId) return router.replace('/experience/map');
       try {
-        // QR deep-link: /experience/ar?qr=TOKEN (quét standee bằng camera máy
-        // trước khi vào app) → bỏ qua bước quét trong app.
+        // QR deep-link: /experience/ar?qr=TOKEN (standee scanned with the
+        // phone camera before entering the app) → skip the in-app scan step.
         const params = new URLSearchParams(window.location.search);
         const urlQr = params.get('qr') || '';
         if (urlQr) setQr(urlQr);
@@ -78,15 +78,15 @@ export default function Page() {
   const needsGps = task && (task.verification_type === 'gps' || task.verification_type === 'hybrid');
   const hasAr = Boolean(task?.ar_config?.glbUrl && task?.ar_config?.targetUrl);
 
-  /** Bước 1 hoàn tất: nhận mã (từ camera hoặc gõ tay) → sang bước AR.
-   * Standee thắng: quét nhầm QR của trạm khác thì chuyển sang nhiệm vụ đó. */
+  /** Step 1 done: a code arrived (scanned or typed) → move on to the AR step.
+   * The standee wins: scanning another stop's QR switches to that task. */
   async function acceptQr({ qr: code, taskId }) {
     if (taskId && taskId !== session.taskId) {
       try {
         const t = await api(`/api/me/tasks/${taskId}`);
         session.setTask(taskId);
         setTask(t);
-      } catch { /* QR của sự kiện khác → giữ nhiệm vụ hiện tại */ }
+      } catch { /* QR from another event → keep the current task */ }
     }
     setQr(code);
     setScanMsg('');
@@ -118,7 +118,7 @@ export default function Page() {
       router.push('/experience/rewards');
     } catch (e) {
       if (e.code === 'qr_invalid') {
-        // Mã sai → quay lại bước quét thay vì kẹt ở màn AR.
+        // Bad code → back to the scan step instead of stalling on AR.
         setQr(''); setPhase('scan'); setScanMsg('QR 代碼不正確 — 請重新掃描現場立牌');
       } else {
         setError(e.code === 'gps_out_of_range' ? '您還不在打卡範圍內，請再靠近一點' : e.message);
@@ -128,7 +128,7 @@ export default function Page() {
     }
   }
 
-  // ─────────────────────────────────────────── Bước 1 · quét QR hiện trường
+  // ─────────────────────────────────────────── Step 1 · scan the on-site QR
   if (phase === 'scan') {
     return (
 <div style={{flex:'1', display:'flex', flexDirection:'column', background:'#000', position:'relative'}}>
@@ -144,12 +144,12 @@ export default function Page() {
     </div>
   </div>
 
-  {/* Khung ngắm */}
+  {/* Viewfinder frame */}
   <div style={{position:'relative', flex:'1', display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none'}}>
     <div style={{width:'232px', height:'232px', borderRadius:'26px', border:'2px dashed rgba(255,255,255,.55)', boxShadow:'0 0 0 2000px rgba(0,0,0,.35)'}}></div>
   </div>
 
-  {/* Hướng dẫn + nhập tay */}
+  {/* Instructions + manual entry */}
   <div style={{position:'relative', padding:'0 20px calc(24px + env(safe-area-inset-bottom, 0px))', display:'flex', flexDirection:'column', gap:'10px', zIndex:10}}>
     {scanMsg && <div style={{padding:'10px 14px', borderRadius:'10px', background:'rgba(239,68,68,.3)', border:'1px solid rgba(239,68,68,.5)', color:'#FECACA', fontSize:'13px', fontWeight:'600', textAlign:'center', backdropFilter:'blur(6px)'}}>{scanMsg}</div>}
     <div style={{textAlign:'center', color:'#fff', fontSize:'13.5px', fontWeight:'700', textShadow:'0 1px 6px rgba(0,0,0,.7)'}}>
@@ -172,7 +172,7 @@ export default function Page() {
     );
   }
 
-  // ───────────────────────────────────────────── Bước 2 · AR + chụp xác minh
+  // ───────────────────────────────────────────── Step 2 · AR + capture/verify
   return (
 <div style={{flex:'1', display:'flex', flexDirection:'column', background:'#000', position:'relative'}}>
   {/* Backdrop: real AR camera (MindAR) when the task ships ar_config; static visual otherwise */}

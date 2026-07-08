@@ -34,12 +34,12 @@ async def create_job(
     ctx: AuthContext = Depends(tenant_admin_context),
 ) -> Model3DJobOut:
     if image.content_type not in ALLOWED_IMAGE_TYPES:
-        raise ApiError(422, "unsupported_image", "Upload a PNG, JPEG or WebP image.")
+        raise ApiError(422, "unsupported_image", "請上傳 PNG、JPEG 或 WebP 圖片。")
     data = await image.read()
     if len(data) > MAX_IMAGE_BYTES:
-        raise ApiError(422, "image_too_large", "Image must be ≤ 10 MB.")
+        raise ApiError(422, "image_too_large", "圖片大小須 ≤ 10 MB。")
     if not data:
-        raise ApiError(422, "image_empty", "Uploaded file is empty.")
+        raise ApiError(422, "image_empty", "上傳的檔案是空的。")
 
     settings = get_settings()
     tenant_id = ctx.identity.tenant_id
@@ -104,7 +104,7 @@ async def _get_job(ctx: AuthContext, job_id: uuid.UUID) -> Model3DJob:
         )
     ).scalar_one_or_none()
     if job is None:
-        raise ApiError(404, "job_not_found", "3D job not found.")
+        raise ApiError(404, "job_not_found", "找不到 3D 生成工作。")
     return job
 
 
@@ -125,9 +125,9 @@ async def upload_target(
     job = await _get_job(ctx, job_id)
     data = await target.read()
     if not data:
-        raise ApiError(422, "target_empty", "Uploaded target is empty.")
+        raise ApiError(422, "target_empty", "上傳的目標檔是空的。")
     if len(data) > MAX_TARGET_BYTES:
-        raise ApiError(422, "target_too_large", "Target must be ≤ 5 MB.")
+        raise ApiError(422, "target_too_large", "目標檔大小須 ≤ 5 MB。")
 
     # In-DB storage: the AR camera loads this URL at every task mount, long
     # after any given container's ephemeral disk has been reset.

@@ -35,7 +35,7 @@ async def headless_event(
     x_export_key: str | None = Header(default=None),
 ) -> HeadlessEventOut:
     if not x_export_key:
-        raise ApiError(401, "export_key_required", "X-Export-Key header is required.")
+        raise ApiError(401, "export_key_required", "需要 X-Export-Key 標頭。")
 
     # Resolve the key first. export_keys is RLS-protected and the tenant is not
     # known until the key row is found, so this one lookup runs with the
@@ -55,9 +55,9 @@ async def headless_event(
         ).scalar_one_or_none()
 
     if key is None or key.revoked_at is not None:
-        raise ApiError(401, "export_key_invalid", "Export key is invalid or revoked.")
+        raise ApiError(401, "export_key_invalid", "匯出金鑰無效或已撤銷。")
     if key.event_id != event_id:
-        raise ApiError(403, "export_key_scope", "Export key is not valid for this event.")
+        raise ApiError(403, "export_key_scope", "匯出金鑰不適用於此活動。")
 
     async with tenant_session(key.tenant_id) as session:
         event = (
@@ -70,7 +70,7 @@ async def headless_event(
             )
         ).scalar_one_or_none()
         if event is None:
-            raise ApiError(404, "event_not_found", "Event not found or inactive.")
+            raise ApiError(404, "event_not_found", "找不到活動，或活動未啟用。")
 
         tenant = (
             await session.execute(select(Tenant).where(Tenant.id == key.tenant_id))

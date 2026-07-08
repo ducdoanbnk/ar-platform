@@ -101,7 +101,7 @@ export default function Page() {
       const job = await adminUpload(`/api/admin/model3d/jobs?name=${encodeURIComponent(file.name.replace(/\.[^.]+$/, ''))}`, fd);
       await refresh(job.id);
       note('已開始生成 — AI 處理中');
-      compileTarget(job.id, file); // chạy nền, có tiến độ riêng
+      compileTarget(job.id, file); // runs in the background with its own progress
     } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); if (fileRef.current) fileRef.current.value = ''; }
   }
 

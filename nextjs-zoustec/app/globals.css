@@ -20,8 +20,8 @@
   --primary-900: #143F50;
   --primary-950: #0B2935;
 
-  /* White-label palette — TenantBrand/applyBrand ghi đè theo màu khách thuê
-     (spec §VIII). Defaults = teal nền tảng. */
+  /* White-label palette — TenantBrand/applyBrand overrides these with the
+     tenant's color (spec §VIII). Defaults = platform teal. */
   --brand: var(--primary-600);
   --brand-dark: var(--primary-800);
   --brand-light: #6FCDE8;
@@ -71,21 +71,21 @@
   --info-600: #2563EB;
   --info-700: #1D4ED8;
 
-  /* ── Cashflow: Income (Thu) green ramp ─────────────────────────────── */
+  /* ── Cashflow: Income green ramp ───────────────────────────────────── */
   --income-50:  #EFFDF4;
   --income-100: #D7F9E3;
   --income-200: #B0F1CB;
   --income-500: #1FB257;
-  --income-600: #16A34A;  /* Thu anchor */
+  --income-600: #16A34A;  /* income anchor */
   --income-700: #15803D;
   --income-800: #166534;
 
-  /* ── Cashflow: Expense (Chi) red ramp ──────────────────────────────── */
+  /* ── Cashflow: Expense red ramp ────────────────────────────────────── */
   --expense-50:  #FEF2F2;
   --expense-100: #FEE2E2;
   --expense-200: #FECACA;
   --expense-500: #EF4444;
-  --expense-600: #DC2626;  /* Chi anchor */
+  --expense-600: #DC2626;  /* expense anchor */
   --expense-700: #B91C1C;
   --expense-800: #991B1B;
 
@@ -144,7 +144,7 @@
   --status-neutral-fg: var(--neutral-600);
 
   /* ── Cashflow semantic aliases (the core money convention) ─────────── */
-  /* Thu = income/inflow = green · Chi = expense/outflow = red */
+  /* Income = inflow = green · Expense = outflow = red */
   --income-fg:      var(--income-700);   /* "+12.000.000 ₫" text */
   --income-strong:  var(--income-600);   /* bars, icons, accents */
   --income-bg:      var(--income-50);    /* tinted row/chip bg */
@@ -155,7 +155,7 @@
   --expense-bg:     var(--expense-50);
   --expense-border: var(--expense-200);
 
-  --balance-fg:     var(--text-strong);  /* net balance / số dư */
+  --balance-fg:     var(--text-strong);  /* net balance */
   --balance-line:   var(--primary-600);  /* balance line on charts */
 }
 

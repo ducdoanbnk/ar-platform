@@ -9,7 +9,7 @@ import { fmt, fmtDate } from '../../../../lib/format';
 
 const ROLE_LABEL = { member: '參與者', tenant_admin: '管理員', platform_admin: '平台管理員' };
 
-/** Client-side CSV export of the loaded table (spec §IX "xuất báo cáo"). */
+/** Client-side CSV export of the loaded table (spec §IX "report export"). */
 function exportCsv(members) {
   const header = ['display_name', 'line_user_id', 'role', 'joined_at', 'stamps', 'rewards'];
   const rows = members.map((m) =>
@@ -17,7 +17,7 @@ function exportCsv(members) {
       .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
       .join(',')
   );
-  // BOM để Excel mở tiếng Trung/Việt không vỡ font.
+  // BOM so Excel opens Chinese/Vietnamese text without mangling it.
   const blob = new Blob(['﻿' + [header.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

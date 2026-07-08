@@ -57,7 +57,7 @@ async def _audit_admin(ctx: AuthContext, action: str, entity_type: str, entity_i
     )
 
 
-# ------------------------------------------------------------------ media upload (spec §VII "tải lên hình ảnh")
+# ------------------------------------------------------------------ media upload (spec §VII "image upload")
 
 ALLOWED_IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
@@ -72,12 +72,12 @@ async def upload_media(
     Bytes go into Postgres, not the filesystem — the hosting disk is ephemeral
     (redeploys/spin-ups reset it), and uploads must outlive both."""
     if image.content_type not in ALLOWED_IMAGE_TYPES:
-        raise ApiError(422, "unsupported_image", "Upload a PNG, JPEG or WebP image.")
+        raise ApiError(422, "unsupported_image", "請上傳 PNG、JPEG 或 WebP 圖片。")
     data = await image.read()
     if not data:
-        raise ApiError(422, "image_empty", "Uploaded file is empty.")
+        raise ApiError(422, "image_empty", "上傳的檔案是空的。")
     if len(data) > MAX_IMAGE_BYTES:
-        raise ApiError(422, "image_too_large", "Image must be ≤ 10 MB.")
+        raise ApiError(422, "image_too_large", "圖片大小須 ≤ 10 MB。")
 
     asset = MediaAsset(
         tenant_id=ctx.identity.tenant_id,
@@ -242,7 +242,7 @@ async def create_event(
         )
     ).scalar_one_or_none()
     if exists:
-        raise ApiError(409, "slug_taken", "An event with this slug already exists.")
+        raise ApiError(409, "slug_taken", "此代稱（slug）已有其他活動使用。")
 
     event = Event(tenant_id=ctx.identity.tenant_id, **body.model_dump())
     ctx.session.add(event)
@@ -261,7 +261,7 @@ async def _get_event(ctx: AuthContext, event_id: uuid.UUID) -> Event:
         )
     ).scalar_one_or_none()
     if event is None:
-        raise ApiError(404, "event_not_found", "Event not found.")
+        raise ApiError(404, "event_not_found", "找不到活動。")
     return event
 
 
@@ -348,7 +348,7 @@ async def list_tasks(
 def _validate_task_config(verification_type: str, has_location: bool, radius_m: int | None) -> None:
     if verification_type in ("gps", "hybrid") and (not has_location or radius_m is None):
         raise ApiError(
-            422, "task_invalid", "GPS/hybrid tasks need a location and radius_m."
+            422, "task_invalid", "GPS／hybrid 任務需要設定座標與 radius_m。"
         )
 
 
@@ -393,7 +393,7 @@ async def _get_task(ctx: AuthContext, task_id: uuid.UUID) -> Task:
         )
     ).scalar_one_or_none()
     if task is None:
-        raise ApiError(404, "task_not_found", "Task not found.")
+        raise ApiError(404, "task_not_found", "找不到任務。")
     return task
 
 
@@ -487,7 +487,7 @@ async def update_branding(
                 )
             ).scalar_one_or_none()
             if taken:
-                raise ApiError(409, "domain_taken", "This domain is bound to another tenant.")
+                raise ApiError(409, "domain_taken", "此網域已綁定其他租戶。")
             tenant.custom_domain = domain.lower()
 
     # Homepage rule (PRD §6.2): pinning the domain root to an event requires
@@ -500,7 +500,7 @@ async def update_branding(
             )
         ).scalar_one_or_none()
         if not known:
-            raise ApiError(422, "event_not_found", "home_event_slug must be an active event of this tenant.")
+            raise ApiError(422, "event_not_found", "home_event_slug 必須是此租戶進行中的活動。")
 
     brand = dict(tenant.brand_config or {})
     brand.update(changes)
@@ -641,7 +641,7 @@ async def revoke_export_key(
         )
     ).scalar_one_or_none()
     if key is None:
-        raise ApiError(404, "key_not_found", "Export key not found.")
+        raise ApiError(404, "key_not_found", "找不到匯出金鑰。")
     if key.revoked_at is None:
         # Column is a naive TIMESTAMP (like every created_at in the schema).
         key.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)

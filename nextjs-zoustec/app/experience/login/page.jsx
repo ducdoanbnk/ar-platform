@@ -23,11 +23,11 @@ export default function Page() {
     (async () => {
       // Deep-links:
       //   Portal card:  ?tenant=..&event=..
-      //   Printed QR:   ?tenant=..&event=..&task=..&qr=TOKEN  → thẳng màn AR
-      // Params có thể nằm trần trên URL hoặc gói trong `liff.state` (SDK chỉ
-      // unpack khi init) — parser tay dưới đây đọc được CẢ HAI, nên parse
-      // TRƯỚC init để biết tenant → chọn đúng LIFF app (white-label plan
-      // mỗi khách một app riêng).
+      //   Printed QR:   ?tenant=..&event=..&task=..&qr=TOKEN  → straight to AR
+      // Params may sit bare on the URL or be wrapped in `liff.state` (the SDK
+      // only unpacks it on init) — the hand-rolled parser below reads BOTH, so
+      // parse BEFORE init to know the tenant → pick the right LIFF app (on the
+      // white-label plan each customer has their own app).
       const readParams = () => {
         const params = new URLSearchParams(window.location.search);
         let qTenant = params.get('tenant');
@@ -129,14 +129,15 @@ export default function Page() {
     }
   }
 
-  // Banner khách hàng: cùng nguồn ảnh với website sự kiện — /api/me/events
-  // trả config.heroImage, còn listing công khai trả hero_image phẳng.
+  // Customer banner: same image source as the event website — /api/me/events
+  // returns config.heroImage, while the public listing returns a flat
+  // hero_image.
   const hero = event?.config?.heroImage || event?.hero_image || null;
 
   return (
 <div style={{flex:'1', display:'flex', flexDirection:'column'}}>
-  {/* Hero / auto-login — flex:1 lấp đầy .mobile-viewport (đã có fallback
-      100vh→100dvh trong globals.css, chạy được cả WebView cũ). */}
+  {/* Hero / auto-login — flex:1 fills .mobile-viewport (globals.css already
+      has the 100vh→100dvh fallback, so old WebViews work too). */}
   <div style={{flex:'1', display:'flex', flexDirection:'column', background: hero ? `linear-gradient(rgba(11,41,53,.78), rgba(19,78,97,.82)), url(${hero}) center/cover` : 'linear-gradient(180deg, var(--brand-hero-b), var(--brand-hero-a))', color:'#fff', padding:'26px 22px calc(28px + env(safe-area-inset-bottom, 0px))', position:'relative'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 70% 12%,rgba(56,176,214,.35),transparent 55%)'}}></div>
     {brand?.logo_url ? (
@@ -150,7 +151,7 @@ export default function Page() {
     <div style={{position:'relative', fontSize:'29px', fontWeight:'800', lineHeight:'1.12', letterSpacing:'-.02em', marginTop:'8px'}}>{event ? event.name : '歡迎來到 Zoustec AR'}</div>
     <div style={{position:'relative', fontSize:'14px', color:'#B6D4DE', lineHeight:'1.55', marginTop:'12px'}}>{event?.description || '完成任務、掃描 AR 並收集紀念印章。'}</div>
 
-    {/* Kiến trúc website theo loại sự kiện (spec §III.2) */}
+    {/* Website architecture per event type (spec §III.2) */}
     {event?.config?.sections?.length > 0 && (
       <div style={{position:'relative', marginTop:'16px'}}>
         <EventSections sections={event.config.sections} variant="dark" />

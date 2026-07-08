@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
                 )
             ).scalar_one_or_none()
             if asset is None:
-                raise ApiError(404, "media_not_found", "Media asset not found.")
+                raise ApiError(404, "media_not_found", "找不到媒體檔案。")
             body, content_type = asset.data, asset.content_type
         return Response(
             content=body,

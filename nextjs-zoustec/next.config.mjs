@@ -11,12 +11,12 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    // Trang quản trị đã dời vào /admin/* — giữ URL cũ sống (bookmark, liff.state cũ).
+    // Admin pages moved under /admin/* — keep old URLs alive (bookmarks, old liff.state).
     return [
       { source: '/dashboard/:path*', destination: '/admin/dashboard/:path*', permanent: false },
       { source: '/builder/:path*', destination: '/admin/builder/:path*', permanent: false },
       { source: '/ar-studio', destination: '/admin/ar-studio', permanent: false },
-      // Console của Zoustec tách khỏi khu khách hàng → /zoustec/*.
+      // The Zoustec console is split off from the customer area → /zoustec/*.
       { source: '/console', destination: '/zoustec/console', permanent: false },
       { source: '/admin/console', destination: '/zoustec/console', permanent: false },
     ];

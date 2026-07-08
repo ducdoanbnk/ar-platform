@@ -286,14 +286,14 @@ async def test_public_site_homepage_rules(client, demo):
     edited = await client.patch(
         "/api/admin/branding",
         headers=bearer(admin),
-        json={"landing_title": "Alpha Adventures", "landing_tagline": "Chọn hành trình của bạn"},
+        json={"landing_title": "Alpha Adventures", "landing_tagline": "選擇你的旅程"},
     )
     assert edited.status_code == 200
     assert edited.json()["landing_title"] == "Alpha Adventures"
     root = await client.get("/api/public/site/alpha")
     b = root.json()["branding"]
     assert b["landing_title"] == "Alpha Adventures"
-    assert b["landing_tagline"] == "Chọn hành trình của bạn"
+    assert b["landing_tagline"] == "選擇你的旅程"
 
 
 # ------------------------------------------------------------------ branding + in-DB media persistence
@@ -388,8 +388,9 @@ async def test_platform_password_login(client, demo, owner_session):
 
 
 async def test_provision_liff_via_api(client, demo, monkeypatch):
-    # Spec mục 5 "Quản lý Tự động LIFF App": platform tạo/cập nhật LIFF app qua
-    # LIFF Server API — LINE được mock, kiểm tra luồng + tham số gửi đi.
+    # Spec item 5 "Automated LIFF App Management": the platform creates/updates
+    # the LIFF app via the LIFF Server API — LINE is mocked; verify the flow
+    # and the parameters sent.
     calls = {}
 
     async def fake_token(channel_id, channel_secret):
@@ -412,7 +413,7 @@ async def test_provision_liff_via_api(client, demo, monkeypatch):
     ).json()["access_token"]
     tid = demo["tenant_a"].id
 
-    # Thiếu custom domain / credentials → 422 rõ ràng.
+    # Missing custom domain / credentials → explicit 422.
     r = await client.post(f"/api/platform/tenants/{tid}/liff", headers=bearer(boss),
                           json={"channel_id": "9990001111", "channel_secret": "sec"})
     assert r.status_code == 422 and r.json()["error"]["code"] == "custom_domain_required"
@@ -420,7 +421,7 @@ async def test_provision_liff_via_api(client, demo, monkeypatch):
     await client.patch(f"/api/platform/tenants/{tid}", headers=bearer(boss),
                        json={"custom_domain": "alpha.example.tw"})
 
-    # Lần đầu: tạo app mới, endpoint = custom domain, LIFF ID tự lưu.
+    # First call: creates a new app, endpoint = custom domain, LIFF ID stored.
     r = await client.post(f"/api/platform/tenants/{tid}/liff", headers=bearer(boss),
                           json={"channel_id": "9990001111", "channel_secret": "sec"})
     assert r.status_code == 200, r.text
@@ -428,10 +429,10 @@ async def test_provision_liff_via_api(client, demo, monkeypatch):
     assert calls["token"] == ("9990001111", "sec")
     assert calls["create"][1] == "https://alpha.example.tw/"
 
-    # Lần hai (credentials đã lưu, body rỗng): cập nhật endpoint app hiện có.
+    # Second call (credentials stored, empty body): updates the existing app's endpoint.
     r = await client.post(f"/api/platform/tenants/{tid}/liff", headers=bearer(boss), json={})
     assert r.status_code == 200, r.text
     assert calls["update"] == ("tok-123", "9990001111-NewLiff", "https://alpha.example.tw/")
 
-    # Secret không bao giờ lộ ra ngoài qua API.
+    # The secret must never leak through the API.
     assert "line_channel_secret" not in r.json()

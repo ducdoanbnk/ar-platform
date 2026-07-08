@@ -91,7 +91,7 @@ async def get_event(
         )
     ).scalar_one_or_none()
     if event is None:
-        raise ApiError(404, "event_not_found", "Event not found.")
+        raise ApiError(404, "event_not_found", "找不到活動。")
     return EventOut.model_validate(event)
 
 
@@ -150,7 +150,7 @@ async def my_progress(
         )
     ).scalar_one_or_none()
     if event is None:
-        raise ApiError(404, "event_not_found", "Event not found.")
+        raise ApiError(404, "event_not_found", "找不到活動。")
 
     completed_ids = (
         (
@@ -202,7 +202,7 @@ async def get_task(
         )
     ).scalar_one_or_none()
     if task is None:
-        raise ApiError(404, "task_not_found", "Task not found.")
+        raise ApiError(404, "task_not_found", "找不到任務。")
 
     completed = (
         await ctx.session.execute(

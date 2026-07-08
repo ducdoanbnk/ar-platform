@@ -1,7 +1,8 @@
-"""Channel Secret của tenant — cần cho tự động hóa LIFF app (spec mục 5).
+"""Tenant Channel Secret — needed for LIFF app automation (spec item 5).
 
-PoC lưu thẳng (Neon đã mã hóa at-rest); khi thương mại hóa cân nhắc mã hóa
-application-level + ghi việc lưu secret vào điều khoản dịch vụ.
+The PoC stores it as-is (Neon encrypts at rest); when commercializing,
+consider application-level encryption and disclose the secret storage in the
+terms of service.
 
 Idempotent (IF NOT EXISTS) per project convention from 0002 onward.
 """

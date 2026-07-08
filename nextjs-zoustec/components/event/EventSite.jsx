@@ -1,6 +1,6 @@
 /**
- * The EVENT WEBSITE (spec §VII "tự động tạo website sự kiện" + §III.3
- * "website chính thức / tên miền của khách hàng").
+ * The EVENT WEBSITE (spec §VII "auto-generate the event website" + §III.3
+ * "official website / customer's own domain").
  *
  * Server-rendered public landing page for ONE event — full-bleed hero,
  * overlapping stat cards, task stops, content sections, and the 開始旅程 CTA
@@ -112,7 +112,7 @@ export default function EventSite({ site, linkBase }) {
       </div>
     </>)}
 
-    {/* CTA cuối trang */}
+    {/* Bottom-of-page CTA */}
     <div style={{maxWidth:'560px', margin:'0 auto 20px'}}>
       <JoinCta href={joinHref} label="立即參加 — 免下載，LINE 直接玩" icon="play" variant="bar" />
     </div>

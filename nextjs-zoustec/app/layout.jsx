@@ -5,9 +5,9 @@ export const metadata = {
   description: 'AR 集章互動體驗平台 — 6 個核心畫面',
 };
 
-// viewport-fit=cover: tràn vào vùng tai thỏ/home-indicator (safe-area do
-// từng màn tự chừa bằng env()). theme-color: thanh trình duyệt LINE/mobile
-// nhuộm cùng tông nền tối thay vì màu mặc định.
+// viewport-fit=cover: extend into the notch/home-indicator areas (each screen
+// reserves its own safe-area via env()). theme-color: tints the LINE/mobile
+// browser chrome the same dark tone instead of the default color.
 export const viewport = {
   width: 'device-width',
   initialScale: 1,

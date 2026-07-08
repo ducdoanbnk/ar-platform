@@ -1,14 +1,15 @@
-"""LIFF Server API — tự động hóa vòng đời LIFF app (spec mục 5 "Quản lý Tự
-động LIFF App").
+"""LIFF Server API — automates the LIFF app lifecycle (spec item 5,
+"Automated LIFF App Management").
 
-LINE không có API tạo CHANNEL (bước đó thủ công, checklist trong
-CUSTOM-DOMAIN.md), nhưng LIFF app trong một channel có sẵn thì quản lý được
-trọn vẹn qua API — auth bằng channel access token phát hành từ Channel ID +
-Channel Secret của chính channel LINE Login đó.
+LINE has no API to create a CHANNEL (that step stays manual; checklist in
+CUSTOM-DOMAIN.md), but LIFF apps inside an existing channel are fully
+manageable via API — authenticated with a channel access token issued from
+the Channel ID + Channel Secret of that same LINE Login channel.
 
-Token: thử endpoint stateless v3 trước, fallback v2 (một số channel/region
-cũ chỉ nhận v2). Mọi lỗi từ LINE được gói thành ApiError 502 kèm chi tiết
-để console hiển thị thẳng cho platform admin.
+Token: try the stateless v3 endpoint first, fall back to v2 (some older
+channels/regions only accept v2). Every LINE-side failure is wrapped in an
+ApiError 502 with details the console can show directly to the platform
+admin.
 """
 
 import httpx
@@ -24,7 +25,7 @@ LIFF_APPS_URL = "https://api.line.me/liff/v1/apps"
 
 
 async def issue_channel_token(channel_id: str, channel_secret: str) -> str:
-    """Channel access token (client_credentials) của channel LINE Login."""
+    """Channel access token (client_credentials) for a LINE Login channel."""
     form = {
         "grant_type": "client_credentials",
         "client_id": channel_id,
@@ -35,7 +36,7 @@ async def issue_channel_token(channel_id: str, channel_secret: str) -> str:
             try:
                 resp = await client.post(url, data=form)
             except httpx.HTTPError as exc:
-                raise ApiError(502, "line_unreachable", "Không kết nối được LINE.") from exc
+                raise ApiError(502, "line_unreachable", "無法連線至 LINE。") from exc
             if resp.status_code == 200:
                 token = resp.json().get("access_token")
                 if token:
@@ -44,14 +45,14 @@ async def issue_channel_token(channel_id: str, channel_secret: str) -> str:
     raise ApiError(
         502,
         "line_channel_auth_failed",
-        "LINE từ chối Channel ID/Secret — kiểm tra lại 2 giá trị trong tab Basic settings.",
+        "LINE 拒絕了 Channel ID／Secret — 請到 LINE Login channel 的 Basic settings 分頁確認這兩個值。",
     )
 
 
 def _liff_payload(endpoint_url: str, description: str) -> dict:
     return {
         "view": {"type": "full", "url": endpoint_url},
-        "description": description[:100] or "AR experience",
+        "description": description[:100] or "AR 體驗",
         "features": {"qrCode": True},
         "scope": ["profile", "openid"],
         "botPrompt": "none",
@@ -59,7 +60,7 @@ def _liff_payload(endpoint_url: str, description: str) -> dict:
 
 
 async def create_liff_app(token: str, endpoint_url: str, description: str) -> str:
-    """Tạo LIFF app mới trong channel → trả về LIFF ID."""
+    """Create a new LIFF app in the channel; returns the LIFF ID."""
     async with httpx.AsyncClient(timeout=10) as client:
         try:
             resp = await client.post(
@@ -68,18 +69,19 @@ async def create_liff_app(token: str, endpoint_url: str, description: str) -> st
                 headers={"authorization": f"Bearer {token}"},
             )
         except httpx.HTTPError as exc:
-            raise ApiError(502, "line_unreachable", "Không kết nối được LINE.") from exc
+            raise ApiError(502, "line_unreachable", "無法連線至 LINE。") from exc
     if resp.status_code != 200:
         logger.warning("liff_create_failed", status=resp.status_code, body=resp.text[:300])
-        raise ApiError(502, "liff_create_failed", f"LINE trả lỗi khi tạo LIFF app: {resp.text[:200]}")
+        raise ApiError(502, "liff_create_failed", f"建立 LIFF app 時 LINE 回傳錯誤：{resp.text[:200]}")
     liff_id = resp.json().get("liffId")
     if not liff_id:
-        raise ApiError(502, "liff_create_failed", "LINE không trả về liffId.")
+        raise ApiError(502, "liff_create_failed", "LINE 未回傳 liffId。")
     return liff_id
 
 
 async def update_liff_endpoint(token: str, liff_id: str, endpoint_url: str) -> None:
-    """Đổi endpoint URL của LIFF app có sẵn (khách đổi custom domain)."""
+    """Point an existing LIFF app at a new endpoint URL (customer changed
+    custom domain)."""
     async with httpx.AsyncClient(timeout=10) as client:
         try:
             resp = await client.put(
@@ -88,7 +90,7 @@ async def update_liff_endpoint(token: str, liff_id: str, endpoint_url: str) -> N
                 headers={"authorization": f"Bearer {token}"},
             )
         except httpx.HTTPError as exc:
-            raise ApiError(502, "line_unreachable", "Không kết nối được LINE.") from exc
+            raise ApiError(502, "line_unreachable", "無法連線至 LINE。") from exc
     if resp.status_code != 200:
         logger.warning("liff_update_failed", status=resp.status_code, body=resp.text[:300])
-        raise ApiError(502, "liff_update_failed", f"LINE trả lỗi khi cập nhật LIFF app: {resp.text[:200]}")
+        raise ApiError(502, "liff_update_failed", f"更新 LIFF app 時 LINE 回傳錯誤：{resp.text[:200]}")

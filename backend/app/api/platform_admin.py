@@ -42,7 +42,7 @@ async def create_tenant(
         await ctx.session.execute(select(Tenant.id).where(Tenant.slug == body.slug))
     ).scalar_one_or_none()
     if exists:
-        raise ApiError(409, "slug_taken", "A tenant with this slug already exists.")
+        raise ApiError(409, "slug_taken", "此代稱（slug）已有其他租戶使用。")
 
     tenant = Tenant(slug=body.slug, name=body.name, brand_config=body.brand_config)
     ctx.session.add(tenant)
@@ -73,7 +73,7 @@ async def update_tenant(
         await ctx.session.execute(select(Tenant).where(Tenant.id == tenant_id))
     ).scalar_one_or_none()
     if tenant is None:
-        raise ApiError(404, "tenant_not_found", "Tenant not found.")
+        raise ApiError(404, "tenant_not_found", "找不到此租戶。")
 
     changes = body.model_dump(exclude_unset=True)
 
@@ -91,7 +91,7 @@ async def update_tenant(
                 )
             ).scalar_one_or_none()
             if taken:
-                raise ApiError(409, "domain_taken", "This domain is bound to another tenant.")
+                raise ApiError(409, "domain_taken", "此網域已綁定其他租戶。")
             tenant.custom_domain = domain.lower()
 
     if "hide_powered_by" in changes:
@@ -123,15 +123,16 @@ async def provision_liff(
     body: TenantLiffProvisionRequest,
     ctx: AuthContext = Depends(platform_admin_context),
 ) -> TenantOut:
-    """Spec mục 5 (Quản lý Tự động LIFF App): tạo — hoặc cập nhật endpoint —
-    LIFF app của tenant qua LIFF Server API. Channel vẫn tạo tay trên LINE
-    console (không có API), nhưng từ Channel ID + Secret trở đi platform tự lo:
-    endpoint luôn trỏ về custom domain của tenant."""
+    """Spec item 5 (Automated LIFF App Management): create — or update the
+    endpoint of — the tenant's LIFF app via the LIFF Server API. The channel
+    itself is still created manually on the LINE console (no API for that),
+    but from Channel ID + Secret onward the platform handles everything: the
+    endpoint always points at the tenant's custom domain."""
     tenant = (
         await ctx.session.execute(select(Tenant).where(Tenant.id == tenant_id))
     ).scalar_one_or_none()
     if tenant is None:
-        raise ApiError(404, "tenant_not_found", "Tenant not found.")
+        raise ApiError(404, "tenant_not_found", "找不到此租戶。")
 
     if body.channel_id and body.channel_id.strip():
         tenant.line_channel_id = body.channel_id.strip()
@@ -141,12 +142,12 @@ async def provision_liff(
     if not tenant.line_channel_id or not tenant.line_channel_secret:
         raise ApiError(
             422, "channel_credentials_required",
-            "Cần Channel ID + Channel Secret (tab Basic settings của channel LINE Login).",
+            "需要 Channel ID 與 Channel Secret（在 LINE Login channel 的 Basic settings 分頁）。",
         )
     if not tenant.custom_domain:
         raise ApiError(
             422, "custom_domain_required",
-            "Gắn custom domain cho tenant trước — endpoint LIFF sẽ trỏ về domain đó.",
+            "請先為此客戶綁定自訂網域 — LIFF Endpoint 將指向該網域。",
         )
 
     endpoint = f"https://{tenant.custom_domain}/"
@@ -154,8 +155,9 @@ async def provision_liff(
         tenant.line_channel_id, tenant.line_channel_secret
     )
 
-    # LIFF ID mang tiền tố channel — chỉ update nếu app hiện tại thuộc đúng
-    # channel này; khác channel (vd đang xài app chung) thì tạo app mới.
+    # LIFF IDs are prefixed with the channel ID — only update when the current
+    # app belongs to this channel; a different channel (e.g. still on the
+    # shared platform app) means create a new app.
     if tenant.line_liff_id and tenant.line_liff_id.split("-", 1)[0] == tenant.line_channel_id:
         await line_liff.update_liff_endpoint(token, tenant.line_liff_id, endpoint)
         action = "tenant.liff_endpoint_updated"

@@ -34,7 +34,7 @@ export default function Page() {
         try {
           const evs = await adminApi('/api/admin/events');
           setEvents(evs.filter((e) => e.is_active));
-        } catch { /* dropdown chỉ còn auto/list */ }
+        } catch { /* dropdown falls back to just auto/list */ }
       } catch (e) {
         if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/dashboard/branding'));
         setError(e.message);
@@ -113,7 +113,7 @@ export default function Page() {
     {form && (
       <div className="grid-split" style={{display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:'16px', maxWidth:'980px'}}>
 
-        {/* Cấu hình */}
+        {/* Configuration */}
         <div style={{background:'#fff', border:'1px solid var(--border-subtle)', borderRadius:'12px', boxShadow:'var(--shadow-sm)', padding:'20px'}}>
           <div style={{fontSize:'15px', fontWeight:'700', color:'var(--text-strong)', marginBottom:'16px'}}>白標設定（spec §VIII）</div>
 

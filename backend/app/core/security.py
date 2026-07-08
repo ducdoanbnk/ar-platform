@@ -53,17 +53,17 @@ def decode_session_token(token: str) -> TokenIdentity:
             token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
         )
     except JWTError as exc:
-        raise ApiError(401, "invalid_token", "Session token is invalid or expired.") from exc
+        raise ApiError(401, "invalid_token", "登入憑證無效或已過期。") from exc
 
     role = claims.get("role")
     if role not in (ROLE_MEMBER, ROLE_TENANT_ADMIN, ROLE_PLATFORM_ADMIN):
-        raise ApiError(401, "invalid_token", "Session token has an unknown role.")
+        raise ApiError(401, "invalid_token", "登入憑證包含未知的角色。")
 
     try:
         subject_id = uuid.UUID(claims["sub"])
         tenant_id = uuid.UUID(claims["tid"]) if claims.get("tid") else None
     except (KeyError, ValueError) as exc:
-        raise ApiError(401, "invalid_token", "Session token is malformed.") from exc
+        raise ApiError(401, "invalid_token", "登入憑證格式錯誤。") from exc
 
     return TokenIdentity(subject_id=subject_id, tenant_id=tenant_id, role=role)
 

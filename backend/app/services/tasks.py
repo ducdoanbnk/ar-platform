@@ -37,7 +37,7 @@ async def _check_gps(
 ) -> dict[str, Any]:
     """PostGIS radius check. Returns evidence (distance) for the audit trail."""
     if task.location is None or task.radius_m is None:
-        raise ApiError(409, "task_misconfigured", "Task has no GPS checkpoint configured.")
+        raise ApiError(409, "task_misconfigured", "此任務尚未設定 GPS 打卡點。")
 
     row = (
         await session.execute(
@@ -57,7 +57,7 @@ async def _check_gps(
         raise ApiError(
             422,
             "gps_out_of_range",
-            "You are not at the checkpoint yet.",
+            "您尚未抵達打卡點。",
             details={"distance_m": round(row.distance_m, 1), "radius_m": task.radius_m},
         )
     return {"distance_m": round(row.distance_m, 1)}
@@ -65,9 +65,9 @@ async def _check_gps(
 
 def _check_qr(task: Task, qr_code: str | None) -> None:
     if not task.qr_token:
-        raise ApiError(409, "task_misconfigured", "Task has no QR code configured.")
+        raise ApiError(409, "task_misconfigured", "此任務尚未設定 QR Code。")
     if not qr_code or qr_code != task.qr_token:
-        raise ApiError(422, "qr_invalid", "QR code is not valid for this task.")
+        raise ApiError(422, "qr_invalid", "此 QR Code 不適用於這個任務。")
 
 
 async def complete_task(
@@ -86,7 +86,7 @@ async def complete_task(
         )
     ).scalar_one_or_none()
     if task is None or not task.is_active:
-        raise ApiError(404, "task_not_found", "Task not found.")
+        raise ApiError(404, "task_not_found", "找不到任務。")
 
     event = (
         await session.execute(
@@ -94,7 +94,7 @@ async def complete_task(
         )
     ).scalar_one_or_none()
     if event is None or not event.is_active:
-        raise ApiError(404, "event_not_found", "Event not found or inactive.")
+        raise ApiError(404, "event_not_found", "找不到活動，或活動未啟用。")
 
     # --- verify -------------------------------------------------------------
     evidence: dict[str, Any] = {}
@@ -103,7 +103,7 @@ async def complete_task(
         evidence["qr"] = "ok"
     if task.verification_type in ("gps", "hybrid"):
         if lat is None or lng is None:
-            raise ApiError(422, "gps_required", "This task requires your GPS position.")
+            raise ApiError(422, "gps_required", "此任務需要您的 GPS 位置。")
         evidence.update(await _check_gps(session, task, lat, lng))
 
     # --- stamp (idempotent) ---------------------------------------------------

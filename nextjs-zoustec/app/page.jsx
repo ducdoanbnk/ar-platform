@@ -19,9 +19,10 @@ const TYPE_META = {
  * Also forwards legacy query-style event links (?tenant=..&event=..). */
 function forwardLiffDeepLink(searchParams) {
   const first = (v) => (Array.isArray(v) ? v[0] : v);
-  // OAuth callback (LINE web-login trả code+state về endpoint, thường kèm cả
-  // liff.state): KHÔNG redirect server-side — redirect sẽ vứt mất code trước
-  // khi liff.init kịp đổi nó lấy phiên. LiffOAuthCompleter xử lý phía client.
+  // OAuth callback (LINE web-login returns code+state to the endpoint, often
+  // with liff.state too): do NOT redirect server-side — that would drop the
+  // code before liff.init can exchange it for a session. LiffOAuthCompleter
+  // handles it client-side.
   if (first(searchParams?.code) && first(searchParams?.state)) return;
   const state = first(searchParams?.['liff.state']);
   if (state) {
@@ -45,7 +46,7 @@ export default async function Page({ searchParams }) {
   const events = await publicGet('/api/public/events');
   return (
 <div className="page-full" style={{display:'flex', flexDirection:'column'}}>
-  {/* Hoàn tất LIFF web-login khi LINE trả code về endpoint (trang gốc) */}
+  {/* Completes LIFF web-login when LINE returns the code to the endpoint (site root) */}
   <LiffOAuthCompleter />
 
   {/* ── Site header ───────────────────────────────────────────────────── */}

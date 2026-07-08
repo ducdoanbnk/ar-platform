@@ -3,15 +3,15 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * In-page QR scanner — bước 1 của nhiệm vụ QR/hybrid (spec §V: quét QR ở
- * standee hiện trường). LIFF scanCodeV2 không khả dụng ổn định trên mọi
- * client (đặc biệt external browser / một số bản LINE iOS) nên tự quét bằng
- * getUserMedia + jsQR — đúng bộ ràng buộc camera mà MindAR đã dùng, nghĩa là
- * chạy được ở mọi nơi màn AR chạy được.
+ * In-page QR scanner — step 1 of the QR/hybrid task (spec §V: scan the QR on
+ * the on-site standee). LIFF scanCodeV2 is not reliably available on every
+ * client (notably external browsers / some LINE iOS builds), so we scan
+ * ourselves with getUserMedia + jsQR — the exact camera constraints MindAR
+ * already uses, so it runs everywhere the AR screen runs.
  */
 export default function QrScanner({ onResult, onError }) {
   const videoRef = useRef(null);
-  // Callbacks in refs: camera khởi động một lần, không re-init theo render.
+  // Callbacks in refs: the camera starts once, never re-inits per render.
   const cbRef = useRef({ onResult, onError });
   cbRef.current = { onResult, onError };
 

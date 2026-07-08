@@ -37,7 +37,7 @@ async def verify_line_id_token(id_token: str, channel_id: str | None = None) -> 
     if settings.auth_dev_mode and id_token.startswith("dev::"):
         parts = id_token.split("::")
         if len(parts) < 2 or not parts[1]:
-            raise ApiError(401, "invalid_line_token", "Malformed dev token.")
+            raise ApiError(401, "invalid_line_token", "開發用 token 格式錯誤。")
         return LineIdentity(
             line_user_id=parts[1],
             display_name=parts[2] if len(parts) > 2 else parts[1],
@@ -48,7 +48,7 @@ async def verify_line_id_token(id_token: str, channel_id: str | None = None) -> 
         raise ApiError(
             503,
             "line_not_configured",
-            "LINE channel is not configured on this environment.",
+            "此環境尚未設定 LINE channel。",
         )
 
     async with httpx.AsyncClient(timeout=10) as client:
@@ -59,17 +59,17 @@ async def verify_line_id_token(id_token: str, channel_id: str | None = None) -> 
             )
         except httpx.HTTPError as exc:
             logger.warning("line_verify_unreachable", error=str(exc))
-            raise ApiError(502, "line_unreachable", "Could not reach LINE to verify the token.") from exc
+            raise ApiError(502, "line_unreachable", "無法連線至 LINE 驗證 token。") from exc
 
     if resp.status_code != 200:
         # LINE returns 400 with error details for invalid/expired tokens.
         logger.info("line_verify_rejected", status=resp.status_code)
-        raise ApiError(401, "invalid_line_token", "LINE ID token is invalid or expired.")
+        raise ApiError(401, "invalid_line_token", "LINE ID token 無效或已過期。")
 
     payload = resp.json()
     sub = payload.get("sub")
     if not sub:
-        raise ApiError(401, "invalid_line_token", "LINE ID token payload is missing sub.")
+        raise ApiError(401, "invalid_line_token", "LINE ID token 內容缺少 sub。")
 
     return LineIdentity(
         line_user_id=sub,

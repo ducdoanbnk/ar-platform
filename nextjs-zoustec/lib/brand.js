@@ -1,6 +1,6 @@
 /**
- * White-label palette generator (spec §VIII "giao diện hoàn toàn theo thương
- * hiệu khách"). From ONE theme color, derive the shades the player UI needs
+ * White-label palette generator (spec §VIII "UI fully in the customer's
+ * brand"). From ONE theme color, derive the shades the player UI needs
  * and publish them as CSS vars (teal defaults live in globals.css):
  *
  *   --brand         accent (buttons, progress, icons)

@@ -16,20 +16,20 @@ const TYPE_META = {
 };
 const METHOD_ICON = { qr: 'qr-code', gps: 'map-pin', hybrid: 'scan-line' };
 const METHOD_LABEL = { qr: 'QR + AR', gps: 'GPS + AR', hybrid: '混合驗證' };
-// Demo checkpoint (Quảng trường Hồ Chí Minh, Vinh) — quick-add GPS/hybrid
+// Demo checkpoint (Ho Chi Minh Square, Vinh) — quick-add GPS/hybrid
 // tasks get a valid location the admin can fine-tune later.
 const DEFAULT_LOCATION = { lat: 18.6766, lng: 105.6853 };
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID || '';
 const TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
 
-/** Printed-QR payload (spec §II.3.A "Admin tạo QR Code"): a LIFF deep-link
+/** Printed-QR payload (spec §II.3.A "Admin creates QR Code"): a LIFF deep-link
  * that opens LINE → auto-login → jumps straight into this task's AR screen
  * with the secret pre-applied. Path-style (`/ID/path?query`) because the LIFF
  * endpoint URL is the site root. Falls back to a web URL without a LIFF ID. */
 function taskQrUrl(event, task, brand) {
-  // Tenant thật lấy từ branding (env slug chỉ là fallback dev); LIFF app
-  // riêng của tenant (white-label plan) thắng app dùng chung.
+  // The real tenant comes from branding (the env slug is only a dev
+  // fallback); the tenant's own LIFF app (white-label plan) beats the shared one.
   const tenant = brand?.tenant_slug || TENANT;
   const liffId = brand?.line_liff_id || LIFF_ID;
   const params = new URLSearchParams({ tenant, event: event.id, task: task.id });
@@ -50,7 +50,7 @@ export default function Page() {
   const [selectedTask, setSelectedTask] = useState(null); // null = event settings mode
   const [taskForm, setTaskForm] = useState(null);
   const [models, setModels] = useState([]); // succeeded AR-Studio jobs
-  const [brand, setBrand] = useState(null); // tenant slug + LIFF riêng (QR links)
+  const [brand, setBrand] = useState(null); // tenant slug + own LIFF (QR links)
   const [busy, setBusy] = useState('');
   const [flash, setFlash] = useState('');
   const [error, setError] = useState('');
@@ -166,7 +166,7 @@ export default function Page() {
     const m = models.find((x) => `job:${x.id}` === v);
     if (!m) return;
     const next = { ...taskForm, glbKey: v, glbUrl: m.result_glb_url };
-    // Model AI kèm sẵn ảnh mục tiêu compile từ chính ảnh gốc → tự điền luôn.
+    // AI models ship a target compiled from the same source image → auto-fill it.
     if (m.params?.targetUrl) { next.targetKey = v; next.targetUrl = m.params.targetUrl; }
     setTaskForm(next);
   }

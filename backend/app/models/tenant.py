@@ -34,9 +34,9 @@ class Tenant(Base, UUIDPk, Timestamped):
     )
     line_liff_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     line_channel_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Channel Secret của channel LINE Login riêng — cho phép platform tự tạo/
-    # cập nhật LIFF app qua LIFF Server API (spec mục 5). Không bao giờ trả ra
-    # ngoài qua API response.
+    # Channel Secret of the tenant's own LINE Login channel — lets the platform
+    # create/update the LIFF app via the LIFF Server API (spec item 5). Never
+    # returned in any API response.
     line_channel_secret: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Business model (spec §XI): saas | white_label | one_time. MRR (NT$) is
     # managed manually by the platform admin in v1 — no billing engine.

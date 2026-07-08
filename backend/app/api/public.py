@@ -57,7 +57,7 @@ async def tenant_branding(slug: str) -> BrandingOut:
             )
         ).scalar_one_or_none()
     if tenant is None:
-        raise ApiError(404, "tenant_not_found", "Unknown tenant.")
+        raise ApiError(404, "tenant_not_found", "查無此租戶。")
     return _branding(tenant)
 
 
@@ -74,14 +74,14 @@ async def resolve_domain(domain: str) -> BrandingOut:
             )
         ).scalar_one_or_none()
     if tenant is None:
-        raise ApiError(404, "domain_not_found", "No tenant is bound to this domain.")
+        raise ApiError(404, "domain_not_found", "此網域尚未綁定任何租戶。")
     return _branding(tenant)
 
 
 @router.get("/site/{tenant_slug}")
 @router.get("/site/{tenant_slug}/{event_slug}")
 async def public_event_site(tenant_slug: str, event_slug: str | None = None) -> dict:
-    """The EVENT WEBSITE payload (spec §VII "tự động tạo website sự kiện"):
+    """The EVENT WEBSITE payload (spec §VII "auto-generated event website"):
     everything the public event page renders in one round-trip — event fields
     + content sections + public task list (no secrets) + tenant branding.
 
@@ -97,7 +97,7 @@ async def public_event_site(tenant_slug: str, event_slug: str | None = None) -> 
             )
         ).scalar_one_or_none()
         if tenant is None:
-            raise ApiError(404, "tenant_not_found", "Unknown tenant.")
+            raise ApiError(404, "tenant_not_found", "查無此租戶。")
 
         brand = tenant.brand_config or {}
         event = None
@@ -110,7 +110,7 @@ async def public_event_site(tenant_slug: str, event_slug: str | None = None) -> 
                 )
             ).scalars().first()
             if event is None:
-                raise ApiError(404, "event_not_found", "No active event for this tenant.")
+                raise ApiError(404, "event_not_found", "此租戶目前沒有進行中的活動。")
         else:
             mode = brand.get("home_mode") or "auto"
             if mode == "event" and brand.get("home_event_slug"):
@@ -135,7 +135,7 @@ async def public_event_site(tenant_slug: str, event_slug: str | None = None) -> 
                     )
                 ).scalars().all()
                 if not actives:
-                    raise ApiError(404, "event_not_found", "No active event for this tenant.")
+                    raise ApiError(404, "event_not_found", "此租戶目前沒有進行中的活動。")
                 if mode == "list" or (mode == "auto" and len(actives) > 1):
                     counts = dict(
                         (

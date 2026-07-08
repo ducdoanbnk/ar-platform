@@ -1,14 +1,14 @@
 # Zoustec frontend (Next.js — nextjs-zoustec) — production image
 #
-# NEXT_PUBLIC_* và BACKEND_INTERNAL_URL phải có Ở BƯỚC BUILD:
-#  - NEXT_PUBLIC_*  được inline vào bundle client
-#  - BACKEND_INTERNAL_URL chốt rewrites /api/* lúc build (Next 14)
-# Render tự truyền env vars làm build-args cho các ARG khai báo dưới đây.
+# NEXT_PUBLIC_* and BACKEND_INTERNAL_URL must be present AT BUILD TIME:
+#  - NEXT_PUBLIC_*  gets inlined into the client bundle
+#  - BACKEND_INTERNAL_URL pins the /api/* rewrites at build (Next 14)
+# Render passes env vars as build-args for the ARGs declared below.
 
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY nextjs-zoustec/package.json nextjs-zoustec/package-lock.json ./
-# canvas stub (npm overrides "canvas: file:./vendor/canvas-stub") phải có trước npm ci
+# canvas stub (npm overrides "canvas: file:./vendor/canvas-stub") must exist before npm ci
 COPY nextjs-zoustec/vendor ./vendor
 RUN npm ci
 
@@ -31,5 +31,5 @@ WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder /app .
 EXPOSE 3000
-# Render cấp $PORT lúc runtime
+# Render provides $PORT at runtime
 CMD ["sh", "-c", "npx next start -H 0.0.0.0 -p ${PORT:-3000}"]

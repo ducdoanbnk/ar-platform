@@ -55,8 +55,8 @@ class TenantOut(BaseModel):
 
 
 class TenantLiffProvisionRequest(BaseModel):
-    """Spec mục 5 — tự động tạo/cập nhật LIFF app qua LIFF Server API.
-    Để trống = dùng credentials đã lưu trên tenant."""
+    """Spec item 5 — auto create/update the LIFF app via the LIFF Server API.
+    Empty fields = use the credentials already stored on the tenant."""
 
     channel_id: str | None = Field(default=None, max_length=64)
     channel_secret: str | None = Field(default=None, max_length=128)
@@ -91,8 +91,9 @@ HEX_COLOR = r"^#[0-9a-fA-F]{6}$"
 class BrandingUpdate(BaseModel):
     """Tenant-admin editable branding (logo, theme, custom domain).
 
-    v1: khách tự khai domain (self-service). Production nên thêm bước xác minh
-    quyền sở hữu (DNS TXT record) trước khi kích hoạt."""
+    v1: customers declare their domain themselves (self-service). Production
+    should add an ownership-verification step (DNS TXT record) before
+    activating it."""
 
     logo_url: str | None = Field(default=None, max_length=1024)
     theme_color: str | None = Field(default=None, pattern=HEX_COLOR)
@@ -102,13 +103,15 @@ class BrandingUpdate(BaseModel):
         pattern=r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
     )
     clear_custom_domain: bool = False
-    # Trang gốc domain khách hiển thị gì khi tenant có nhiều sự kiện (PRD §6.2
-    # tenant resolver): auto = 1 sự kiện thì vào thẳng, nhiều thì trang tổng
-    # quan; list = luôn trang tổng quan; event = ghim home_event_slug.
+    # What the custom-domain root shows when the tenant has multiple events
+    # (PRD §6.2 tenant resolver): auto = go straight in with 1 event, show the
+    # overview page with more; list = always the overview page; event = pin
+    # home_event_slug.
     home_mode: Literal["auto", "list", "event"] | None = None
     home_event_slug: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$")
-    # Nội dung trang tổng quan (TenantLanding) — khách tự soạn; rỗng = mặc định
-    # (tiêu đề = tên tổ chức, mô tả = câu chào chuẩn của nền tảng).
+    # Overview-page (TenantLanding) content — customer-authored; empty = the
+    # defaults (title = organization name, tagline = the platform's standard
+    # greeting).
     landing_title: str | None = Field(default=None, max_length=255)
     landing_tagline: str | None = Field(default=None, max_length=500)
     landing_hero: str | None = Field(default=None, max_length=1024)

@@ -51,7 +51,7 @@ async def login_with_line(body: LineLoginRequest) -> SessionResponse:
             )
         ).scalar_one_or_none()
     if tenant is None:
-        raise ApiError(404, "tenant_not_found", "Unknown tenant.")
+        raise ApiError(404, "tenant_not_found", "查無此租戶。")
 
     # Members arrive via the tenant's LIFF app when one is bound; tenant ADMINS
     # sign in to the dashboard via the platform's shared LIFF. Accept either:
@@ -159,7 +159,7 @@ async def login_platform_admin(body: PlatformLoginRequest) -> SessionResponse:
 
     if admin is None:
         # Deny-by-default: being a LINE user grants nothing at platform level.
-        raise ApiError(403, "forbidden", "Not a platform admin.")
+        raise ApiError(403, "forbidden", "此帳號不是平台管理員。")
 
     identity = TokenIdentity(
         subject_id=admin.id, tenant_id=None, role=ROLE_PLATFORM_ADMIN

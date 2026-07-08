@@ -21,7 +21,7 @@ export default function TenantLanding({ site, linkBase }) {
   const { branding, events } = site;
   const p = brandPalette(branding.theme_color || '#0E7490') || {};
   const base = linkBase ?? `/e/${branding.tenant_slug}`;
-  // Khách tự soạn ở /admin/dashboard/branding (mục 活動總覽首頁); rỗng = mặc định.
+  // Tenant-edited at /admin/dashboard/branding (活動總覽首頁 section); empty = defaults.
   const title = branding.landing_title || branding.tenant_name;
   const tagline = branding.landing_tagline || '選擇一個活動開始 — 掃描 AR、完成任務並收集紀念印章。';
   const heroImg = branding.landing_hero;

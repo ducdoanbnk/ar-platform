@@ -24,7 +24,7 @@ export default function JoinCta({ href, label, icon, variant = 'primary' }) {
 
   async function go() {
     if (busy) return;
-    // Điện thoại: permalink mở thẳng LINE. Desktop: hiện QR cho khách quét.
+    // Phone: the permalink opens LINE directly. Desktop: show a QR to scan.
     if (MOBILE_UA.test(navigator.userAgent)) { window.location.href = href; return; }
     setBusy(true);
     try {
