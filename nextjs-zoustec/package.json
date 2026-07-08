@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@line/liff": "^2.29.1",
+    "jsqr": "^1.4.0",
     "lucide-react": "0.441.0",
     "mind-ar": "1.2.5",
     "next": "14.2.5",

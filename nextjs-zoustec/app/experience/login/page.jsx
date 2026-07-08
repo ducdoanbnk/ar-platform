@@ -64,7 +64,7 @@ export default function Page() {
         try {
           const evts = await api('/api/public/events');
           const ev = evts.find((x) => x.event_id === qEvent);
-          if (ev) setEvent({ name: ev.name, description: ev.description, event_type: ev.event_type, tenant_name: ev.tenant_name });
+          if (ev) setEvent({ name: ev.name, description: ev.description, event_type: ev.event_type, tenant_name: ev.tenant_name, hero_image: ev.hero_image });
         } catch { /* preview only — ignore */ }
       }
 
@@ -120,11 +120,15 @@ export default function Page() {
     }
   }
 
+  // Banner khách hàng: cùng nguồn ảnh với website sự kiện — /api/me/events
+  // trả config.heroImage, còn listing công khai trả hero_image phẳng.
+  const hero = event?.config?.heroImage || event?.hero_image || null;
+
   return (
 <div style={{flex:'1', display:'flex', flexDirection:'column'}}>
   {/* Hero / auto-login — flex:1 lấp đầy .mobile-viewport (đã có fallback
       100vh→100dvh trong globals.css, chạy được cả WebView cũ). */}
-  <div style={{flex:'1', display:'flex', flexDirection:'column', background: event?.config?.heroImage ? `linear-gradient(rgba(11,41,53,.78), rgba(19,78,97,.82)), url(${event.config.heroImage}) center/cover` : 'linear-gradient(180deg, var(--brand-hero-b), var(--brand-hero-a))', color:'#fff', padding:'26px 22px calc(84px + env(safe-area-inset-bottom, 0px))', position:'relative'}}>
+  <div style={{flex:'1', display:'flex', flexDirection:'column', background: hero ? `linear-gradient(rgba(11,41,53,.78), rgba(19,78,97,.82)), url(${hero}) center/cover` : 'linear-gradient(180deg, var(--brand-hero-b), var(--brand-hero-a))', color:'#fff', padding:'26px 22px calc(28px + env(safe-area-inset-bottom, 0px))', position:'relative'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 70% 12%,rgba(56,176,214,.35),transparent 55%)'}}></div>
     {brand?.logo_url ? (
       <img src={brand.logo_url} alt={brand.tenant_name} style={{position:'relative', marginTop:'14px', width:'64px', height:'64px', borderRadius:'18px', objectFit:'cover', boxShadow:'0 14px 30px rgba(0,0,0,.35)', background:'#fff'}} />

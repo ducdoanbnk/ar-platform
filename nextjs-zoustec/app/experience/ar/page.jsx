@@ -7,8 +7,9 @@ import dynamic from 'next/dynamic';
 import { Icon } from '../../../components/Icon';
 import { api, getPosition, session } from '../../../lib/liff-client';
 
-// MindAR touches window/camera — client only, never SSR.
+// MindAR + camera touch window — client only, never SSR.
 const ARStage = dynamic(() => import('../../../components/ar/ARStage'), { ssr: false });
+const QrScanner = dynamic(() => import('../../../components/ar/QrScanner'), { ssr: false });
 
 const AR_STATUS_TEXT = {
   initializing: '正在啟動 AR 引擎…',
@@ -18,10 +19,35 @@ const AR_STATUS_TEXT = {
   completed: 'AR 掃描完成！',
 };
 
+/** Printed standees encode the LIFF permalink (?tenant&event&task&qr, có thể
+ * gói trong liff.state). Người dùng cũng có thể gõ token trần. */
+function parseQrText(text) {
+  const t = (text || '').trim();
+  if (!t) return { qr: '', taskId: null };
+  let qs = null;
+  try {
+    const url = new URL(t);
+    qs = url.searchParams;
+    const st = qs.get('liff.state');
+    if (st) {
+      const dec = decodeURIComponent(st);
+      const q = dec.includes('?') ? dec.slice(dec.indexOf('?') + 1) : dec.replace(/^[?/]+/, '');
+      qs = new URLSearchParams(q);
+    }
+  } catch {
+    return { qr: t, taskId: null }; // không phải URL → token trần
+  }
+  return { qr: qs.get('qr') || '', taskId: qs.get('task') || null };
+}
+
 export default function Page() {
   const router = useRouter();
   const [task, setTask] = useState(null);
   const [qr, setQr] = useState('');
+  const [manual, setManual] = useState('');
+  const [phase, setPhase] = useState('boot'); // boot | scan | ar
+  const [scanMsg, setScanMsg] = useState('');
+  const [camDead, setCamDead] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [arStatus, setArStatus] = useState('');
@@ -31,13 +57,19 @@ export default function Page() {
     (async () => {
       if (!session.token || !session.taskId) return router.replace('/experience/map');
       try {
-        // QR deep-link: /experience/ar?qr=TOKEN (URL in trên standee, quét bằng camera máy)
+        // QR deep-link: /experience/ar?qr=TOKEN (quét standee bằng camera máy
+        // trước khi vào app) → bỏ qua bước quét trong app.
         const params = new URLSearchParams(window.location.search);
-        if (params.get('qr')) setQr(params.get('qr'));
-        setTask(await api(`/api/me/tasks/${session.taskId}`));
+        const urlQr = params.get('qr') || '';
+        if (urlQr) setQr(urlQr);
+        const t = await api(`/api/me/tasks/${session.taskId}`);
+        setTask(t);
+        const needQr = t.verification_type === 'qr' || t.verification_type === 'hybrid';
+        setPhase(needQr && !urlQr ? 'scan' : 'ar');
       } catch (e) {
         if (e.status === 401) return router.replace('/experience/login');
         setError(e.message);
+        setPhase('ar');
       }
     })();
   }, [router]);
@@ -46,13 +78,35 @@ export default function Page() {
   const needsGps = task && (task.verification_type === 'gps' || task.verification_type === 'hybrid');
   const hasAr = Boolean(task?.ar_config?.glbUrl && task?.ar_config?.targetUrl);
 
+  /** Bước 1 hoàn tất: nhận mã (từ camera hoặc gõ tay) → sang bước AR.
+   * Standee thắng: quét nhầm QR của trạm khác thì chuyển sang nhiệm vụ đó. */
+  async function acceptQr({ qr: code, taskId }) {
+    if (taskId && taskId !== session.taskId) {
+      try {
+        const t = await api(`/api/me/tasks/${taskId}`);
+        session.setTask(taskId);
+        setTask(t);
+      } catch { /* QR của sự kiện khác → giữ nhiệm vụ hiện tại */ }
+    }
+    setQr(code);
+    setScanMsg('');
+    setError('');
+    setPhase('ar');
+  }
+
+  function handleScan(text) {
+    const parsed = parseQrText(text);
+    if (!parsed.qr) return setScanMsg('這個 QR 不含活動代碼 — 請掃描現場立牌上的 QR');
+    acceptQr(parsed);
+  }
+
   async function complete() {
     if (busy || !task) return;
     setBusy(true); setError('');
     try {
       const payload = {};
       if (needsQr) {
-        if (!qr.trim()) throw new Error('請輸入或掃描 QR 代碼');
+        if (!qr.trim()) { setPhase('scan'); throw new Error('請先掃描現場 QR 代碼'); }
         payload.qr_code = qr.trim();
       }
       if (needsGps) {
@@ -63,16 +117,66 @@ export default function Page() {
       sessionStorage.setItem('zx_last_result', JSON.stringify({ task_name: task.name, ...out }));
       router.push('/experience/rewards');
     } catch (e) {
-      setError(e.code === 'gps_out_of_range' ? '您還不在打卡範圍內，請再靠近一點' : e.code === 'qr_invalid' ? 'QR 代碼不正確' : e.message);
+      if (e.code === 'qr_invalid') {
+        // Mã sai → quay lại bước quét thay vì kẹt ở màn AR.
+        setQr(''); setPhase('scan'); setScanMsg('QR 代碼不正確 — 請重新掃描現場立牌');
+      } else {
+        setError(e.code === 'gps_out_of_range' ? '您還不在打卡範圍內，請再靠近一點' : e.message);
+      }
     } finally {
       setBusy(false);
     }
   }
 
+  // ─────────────────────────────────────────── Bước 1 · quét QR hiện trường
+  if (phase === 'scan') {
+    return (
+<div style={{flex:'1', display:'flex', flexDirection:'column', background:'#000', position:'relative'}}>
+  {!camDead && <QrScanner onResult={handleScan} onError={() => setCamDead(true)} />}
+  {camDead && <div style={{position:'absolute', inset:'0', background:'linear-gradient(180deg,#243447,#0d1620 60%,#1a2733)'}}></div>}
+
+  {/* Top bar */}
+  <div style={{position:'relative', display:'flex', alignItems:'center', gap:'9px', padding:'14px', zIndex:10}}>
+    <Link href="/experience/map" style={{width:'34px', height:'34px', borderRadius:'9999px', background:'rgba(0,0,0,.35)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', backdropFilter:'blur(6px)', textDecoration:'none'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="chevron-left" /></span></Link>
+    <div style={{display:'flex', alignItems:'center', gap:'7px', background:'rgba(0,0,0,.35)', padding:'7px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(6px)'}}>
+      <span style={{width:'18px', height:'18px', borderRadius:'9999px', background:'var(--brand, #0E7490)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'10.5px', fontWeight:'800'}}>1</span>
+      掃描現場 QR · {task?.name || '…'}
+    </div>
+  </div>
+
+  {/* Khung ngắm */}
+  <div style={{position:'relative', flex:'1', display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none'}}>
+    <div style={{width:'232px', height:'232px', borderRadius:'26px', border:'2px dashed rgba(255,255,255,.55)', boxShadow:'0 0 0 2000px rgba(0,0,0,.35)'}}></div>
+  </div>
+
+  {/* Hướng dẫn + nhập tay */}
+  <div style={{position:'relative', padding:'0 20px calc(24px + env(safe-area-inset-bottom, 0px))', display:'flex', flexDirection:'column', gap:'10px', zIndex:10}}>
+    {scanMsg && <div style={{padding:'10px 14px', borderRadius:'10px', background:'rgba(239,68,68,.3)', border:'1px solid rgba(239,68,68,.5)', color:'#FECACA', fontSize:'13px', fontWeight:'600', textAlign:'center', backdropFilter:'blur(6px)'}}>{scanMsg}</div>}
+    <div style={{textAlign:'center', color:'#fff', fontSize:'13.5px', fontWeight:'700', textShadow:'0 1px 6px rgba(0,0,0,.7)'}}>
+      {camDead ? '無法開啟相機 — 請在下方輸入立牌上的代碼' : '第 1 步 · 將相機對準活動立牌上的 QR 碼'}
+    </div>
+    <div style={{display:'flex', gap:'8px'}}>
+      <input
+        value={manual}
+        onChange={(e) => setManual(e.target.value)}
+        placeholder="或手動輸入 QR 代碼"
+        style={{flex:'1', height:'46px', borderRadius:'12px', border:'1px solid rgba(255,255,255,.3)', background:'rgba(0,0,0,.45)', color:'#fff', padding:'0 14px', fontSize:'13px', fontWeight:'600', outline:'none', backdropFilter:'blur(6px)'}}
+      />
+      <button
+        onClick={() => { const p = parseQrText(manual); p.qr ? acceptQr(p) : setScanMsg('請輸入代碼'); }}
+        style={{height:'46px', padding:'0 18px', borderRadius:'12px', border:'none', background:'#fff', color:'var(--primary-700)', fontSize:'13.5px', fontWeight:'800', cursor:'pointer'}}
+      >確認</button>
+    </div>
+  </div>
+</div>
+    );
+  }
+
+  // ───────────────────────────────────────────── Bước 2 · AR + chụp xác minh
   return (
 <div style={{flex:'1', display:'flex', flexDirection:'column', background:'#000', position:'relative'}}>
   {/* Backdrop: real AR camera (MindAR) when the task ships ar_config; static visual otherwise */}
-  {hasAr ? (
+  {phase === 'ar' && hasAr ? (
     <ARStage
       glbUrl={task.ar_config.glbUrl}
       targetUrl={task.ar_config.targetUrl}
@@ -90,7 +194,10 @@ export default function Page() {
   {/* Top bar */}
   <div style={{position:'relative', display:'flex', alignItems:'center', gap:'9px', padding:'14px', zIndex:10, pointerEvents:'none'}}>
     <Link href="/experience/map" style={{width:'34px', height:'34px', borderRadius:'9999px', background:'rgba(0,0,0,.35)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', backdropFilter:'blur(6px)', textDecoration:'none', pointerEvents:'auto'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="chevron-left" /></span></Link>
-    <div style={{display:'flex', alignItems:'center', gap:'7px', background:'rgba(0,0,0,.35)', padding:'7px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(6px)'}}><span style={{width:'7px', height:'7px', borderRadius:'50%', background: arDone ? 'var(--success-500)' : 'var(--danger-500)'}}></span>AR · {task?.name || '…'}</div>
+    <div style={{display:'flex', alignItems:'center', gap:'7px', background:'rgba(0,0,0,.35)', padding:'7px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12px', fontWeight:'600', backdropFilter:'blur(6px)'}}>
+      {needsQr && <span style={{width:'18px', height:'18px', borderRadius:'9999px', background:'var(--brand, #0E7490)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'10.5px', fontWeight:'800'}}>2</span>}
+      <span style={{width:'7px', height:'7px', borderRadius:'50%', background: arDone ? 'var(--success-500)' : 'var(--danger-500)'}}></span>AR · {task?.name || '…'}
+    </div>
   </div>
 
   {/* Static scan frame + mascot (only when no real AR engine) */}
@@ -113,22 +220,20 @@ export default function Page() {
         {AR_STATUS_TEXT[arStatus] || arStatus}
       </div>
     )}
-    {error && <div style={{padding:'10px 14px', borderRadius:'10px', background:'rgba(239,68,68,.3)', border:'1px solid rgba(239,68,68,.5)', color:'#FECACA', fontSize:'13px', fontWeight:'600', textAlign:'center', backdropFilter:'blur(6px)'}}>{error}</div>}
-    {needsQr && (
-      <input
-        value={qr}
-        onChange={(e) => setQr(e.target.value)}
-        placeholder="輸入或掃描 QR 代碼"
-        style={{height:'46px', borderRadius:'12px', border:'1px solid rgba(255,255,255,.3)', background:'rgba(0,0,0,.4)', color:'#fff', padding:'0 14px', fontSize:'13px', fontWeight:'600', outline:'none', backdropFilter:'blur(6px)'}}
-      />
+    {needsQr && qr && (
+      <div style={{alignSelf:'center', display:'inline-flex', alignItems:'center', gap:'8px', padding:'6px 12px', borderRadius:'9999px', background:'rgba(16,185,129,.22)', border:'1px solid rgba(16,185,129,.5)', color:'#6EE7B7', fontSize:'12px', fontWeight:'700', backdropFilter:'blur(6px)'}}>
+        <span style={{fontSize:'13px', display:'inline-flex', lineHeight:'0'}}><Icon name="circle-check" /></span>QR 已確認
+        <button onClick={() => { setQr(''); setPhase('scan'); }} style={{background:'none', border:'none', color:'#A7F3D0', fontSize:'11.5px', fontWeight:'700', cursor:'pointer', padding:0, textDecoration:'underline'}}>重新掃描</button>
+      </div>
     )}
+    {error && <div style={{padding:'10px 14px', borderRadius:'10px', background:'rgba(239,68,68,.3)', border:'1px solid rgba(239,68,68,.5)', color:'#FECACA', fontSize:'13px', fontWeight:'600', textAlign:'center', backdropFilter:'blur(6px)'}}>{error}</div>}
     <div style={{textAlign:'center', color:'#fff', fontSize:'13px', fontWeight:'600', textShadow:'0 1px 6px rgba(0,0,0,.7)'}}>
-      {task ? (needsGps ? '按下快門將取得您的定位並完成驗證' : '掃描或輸入現場 QR 後按下快門') : '載入任務中…'}
+      {task ? (needsGps ? '按下快門將取得您的定位並完成驗證' : '按下快門完成打卡') : '載入任務中…'}
     </div>
   </div>
 
   {/* Controls */}
-  <div style={{position:'relative', display:'flex', alignItems:'center', justifyContent:'center', gap:'34px', paddingBottom:'92px', zIndex:10}}>
+  <div style={{position:'relative', display:'flex', alignItems:'center', justifyContent:'center', gap:'34px', paddingBottom:'calc(24px + env(safe-area-inset-bottom, 0px))', zIndex:10}}>
     <span style={{width:'46px', height:'46px', borderRadius:'9999px', background:'rgba(0,0,0,.35)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'19px', backdropFilter:'blur(6px)'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="rotate-3d" /></span></span>
     <button onClick={complete} disabled={busy || !task} style={{width:'74px', height:'74px', borderRadius:'9999px', background: arDone ? 'var(--success-500)' : '#fff', border:'5px solid rgba(255,255,255,.4)', display:'flex', alignItems:'center', justifyContent:'center', color: arDone ? '#fff' : 'var(--primary-700)', fontSize:'28px', cursor:'pointer', opacity:busy ? .6 : 1}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name={busy ? 'loader' : 'camera'} /></span></button>
     <span style={{width:'46px', height:'46px', borderRadius:'9999px', background:'rgba(0,0,0,.35)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'19px', backdropFilter:'blur(6px)'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="share-2" /></span></span>
