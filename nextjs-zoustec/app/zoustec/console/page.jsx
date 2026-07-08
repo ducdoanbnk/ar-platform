@@ -55,6 +55,7 @@ export default function Page() {
   const [mgrForm, setMgrForm] = useState(null);
   const [mgrBusy, setMgrBusy] = useState(false);
   const [mgrError, setMgrError] = useState('');
+  const [mgrFlash, setMgrFlash] = useState('');
   const [error, setError] = useState('');
 
   async function openManage(tenantId) {
@@ -68,10 +69,12 @@ export default function Page() {
         custom_domain: t.custom_domain || '',
         line_liff_id: t.line_liff_id || '',
         line_channel_id: t.line_channel_id || '',
+        channel_secret: '',
         hide_powered_by: Boolean(t.brand_config?.hide_powered_by),
         plan: t.plan || 'saas',
         mrr_ntd: t.mrr_ntd ?? '',
       });
+      setMgrFlash('');
     } catch (e) {
       if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
       setError(e.message);
@@ -94,6 +97,27 @@ export default function Page() {
       await platformApi(`/api/platform/tenants/${mgr.id}`, { method: 'PATCH', body });
       setMgr(null); setMgrForm(null);
       setOv(await platformApi('/api/platform/overview?months=6'));
+    } catch (e) {
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
+      setMgrError(e.message);
+    } finally { setMgrBusy(false); }
+  }
+
+  /** Spec mục 5: platform tự tạo (hoặc cập nhật endpoint) LIFF app qua LIFF
+   * Server API — khách chỉ cần đưa Channel ID + Secret một lần. */
+  async function provisionLiff() {
+    if (!mgr || mgrBusy) return;
+    setMgrBusy(true); setMgrError(''); setMgrFlash('');
+    try {
+      const t = await platformApi(`/api/platform/tenants/${mgr.id}/liff`, {
+        method: 'POST',
+        body: {
+          channel_id: mgrForm.line_channel_id || null,
+          channel_secret: mgrForm.channel_secret || null,
+        },
+      });
+      setMgrForm({ ...mgrForm, line_liff_id: t.line_liff_id || '', channel_secret: '' });
+      setMgrFlash(`LIFF app 已就緒 ✓ — ${t.line_liff_id}（Endpoint → https://${t.custom_domain}/）`);
     } catch (e) {
       if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
       setMgrError(e.message);
@@ -238,6 +262,17 @@ export default function Page() {
 
           <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>LINE Channel ID</label>
           <input value={mgrForm.line_channel_id} onChange={(e) => setMgrForm({ ...mgrForm, line_channel_id: e.target.value })} placeholder="留空 = 平台共用" style={{width:'100%', height:'40px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'13px', fontFamily:'var(--font-mono)', marginBottom:'12px', outline:'none'}} />
+
+          {/* Spec mục 5 — 自動建立 LIFF：channel tạo tay, LIFF app do platform tạo qua API */}
+          <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>LINE Channel Secret（自動建立 LIFF 用）</label>
+          <div style={{display:'flex', gap:'8px', marginBottom:'6px'}}>
+            <input type="password" value={mgrForm.channel_secret} onChange={(e) => setMgrForm({ ...mgrForm, channel_secret: e.target.value })} placeholder="留空 = 使用已儲存的 Secret" autoComplete="off" style={{flex:1, height:'40px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'13px', fontFamily:'var(--font-mono)', outline:'none'}} />
+            <button onClick={provisionLiff} disabled={mgrBusy} style={{height:'40px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'12.5px', fontWeight:'700', border:'none', cursor:'pointer', whiteSpace:'nowrap', opacity: mgrBusy ? .6 : 1}}>{mgrBusy ? '處理中…' : '自動建立 LIFF'}</button>
+          </div>
+          <div style={{fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.6, marginBottom:'12px'}}>
+            需先綁定自訂網域 — LIFF Endpoint 會指向該網域。已有本 channel 的 LIFF 時改為更新 Endpoint（客戶換網域後按一次即可）。
+          </div>
+          {mgrFlash && <div style={{padding:'9px 12px', borderRadius:'8px', background:'var(--status-success-bg, #ECFDF5)', color:'var(--status-success-fg, #047857)', fontSize:'12px', fontWeight:'700', marginBottom:'12px'}}>{mgrFlash}</div>}
 
           <div style={{display:'flex', gap:'10px', marginBottom:'12px'}}>
             <div style={{flex:1}}>

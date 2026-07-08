@@ -9,7 +9,14 @@ from sqlalchemy import func, select
 from app.api.deps import AuthContext, platform_admin_context
 from app.core.errors import ApiError
 from app.models import Event, Member, Stamp, Tenant
-from app.schemas import EventOut, TenantCreate, TenantOut, TenantUpdate
+from app.schemas import (
+    EventOut,
+    TenantCreate,
+    TenantLiffProvisionRequest,
+    TenantOut,
+    TenantUpdate,
+)
+from app.services import line_liff
 from app.services.audit import record_audit
 
 router = APIRouter(prefix="/api/platform", tags=["platform-admin"])
@@ -105,6 +112,68 @@ async def update_tenant(
         entity_type="tenant",
         entity_id=tenant.id,
         data={"fields": list(body.model_dump(exclude_unset=True))},
+    )
+    await ctx.session.commit()
+    return TenantOut.model_validate(tenant)
+
+
+@router.post("/tenants/{tenant_id}/liff", response_model=TenantOut)
+async def provision_liff(
+    tenant_id: uuid.UUID,
+    body: TenantLiffProvisionRequest,
+    ctx: AuthContext = Depends(platform_admin_context),
+) -> TenantOut:
+    """Spec mục 5 (Quản lý Tự động LIFF App): tạo — hoặc cập nhật endpoint —
+    LIFF app của tenant qua LIFF Server API. Channel vẫn tạo tay trên LINE
+    console (không có API), nhưng từ Channel ID + Secret trở đi platform tự lo:
+    endpoint luôn trỏ về custom domain của tenant."""
+    tenant = (
+        await ctx.session.execute(select(Tenant).where(Tenant.id == tenant_id))
+    ).scalar_one_or_none()
+    if tenant is None:
+        raise ApiError(404, "tenant_not_found", "Tenant not found.")
+
+    if body.channel_id and body.channel_id.strip():
+        tenant.line_channel_id = body.channel_id.strip()
+    if body.channel_secret and body.channel_secret.strip():
+        tenant.line_channel_secret = body.channel_secret.strip()
+
+    if not tenant.line_channel_id or not tenant.line_channel_secret:
+        raise ApiError(
+            422, "channel_credentials_required",
+            "Cần Channel ID + Channel Secret (tab Basic settings của channel LINE Login).",
+        )
+    if not tenant.custom_domain:
+        raise ApiError(
+            422, "custom_domain_required",
+            "Gắn custom domain cho tenant trước — endpoint LIFF sẽ trỏ về domain đó.",
+        )
+
+    endpoint = f"https://{tenant.custom_domain}/"
+    token = await line_liff.issue_channel_token(
+        tenant.line_channel_id, tenant.line_channel_secret
+    )
+
+    # LIFF ID mang tiền tố channel — chỉ update nếu app hiện tại thuộc đúng
+    # channel này; khác channel (vd đang xài app chung) thì tạo app mới.
+    if tenant.line_liff_id and tenant.line_liff_id.split("-", 1)[0] == tenant.line_channel_id:
+        await line_liff.update_liff_endpoint(token, tenant.line_liff_id, endpoint)
+        action = "tenant.liff_endpoint_updated"
+    else:
+        tenant.line_liff_id = await line_liff.create_liff_app(
+            token, endpoint, f"{tenant.name} AR"
+        )
+        action = "tenant.liff_created"
+
+    await record_audit(
+        ctx.session,
+        tenant_id=tenant.id,
+        actor_type="platform_admin",
+        actor_id=ctx.identity.subject_id,
+        action=action,
+        entity_type="tenant",
+        entity_id=tenant.id,
+        data={"liff_id": tenant.line_liff_id, "endpoint": endpoint},
     )
     await ctx.session.commit()
     return TenantOut.model_validate(tenant)

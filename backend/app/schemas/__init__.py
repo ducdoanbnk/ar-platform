@@ -54,6 +54,14 @@ class TenantOut(BaseModel):
     created_at: datetime
 
 
+class TenantLiffProvisionRequest(BaseModel):
+    """Spec mục 5 — tự động tạo/cập nhật LIFF app qua LIFF Server API.
+    Để trống = dùng credentials đã lưu trên tenant."""
+
+    channel_id: str | None = Field(default=None, max_length=64)
+    channel_secret: str | None = Field(default=None, max_length=128)
+
+
 class TenantUpdate(BaseModel):
     """Platform-admin tenant management (white-label controls included)."""
 
