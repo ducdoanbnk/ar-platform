@@ -45,7 +45,16 @@ async def create_job(
     tenant_id = ctx.identity.tenant_id
     assert tenant_id is not None
 
-    # Store the source image under media/{tenant}/src-{uuid}.ext
+    # Durable copy in the DB: the source image doubles as the PRINTED AR
+    # target (view/download/re-compile later) — it must survive the ephemeral
+    # container disk, like every upload since migration 0005.
+    src_asset = MediaAsset(
+        tenant_id=tenant_id, content_type=image.content_type, data=data
+    )
+    ctx.session.add(src_asset)
+    await ctx.session.flush()
+
+    # Scratch copy on disk — the provider seam takes a local file path.
     tenant_dir = os.path.join(settings.media_dir, str(tenant_id))
     os.makedirs(tenant_dir, exist_ok=True)
     ext = ALLOWED_IMAGE_TYPES[image.content_type]
@@ -59,7 +68,7 @@ async def create_job(
         status="pending",
         provider=get_model3d_provider().name,
         source_image_path=image_path,
-        params={"scale": 0.4},
+        params={"scale": 0.4, "sourceImageUrl": f"/media/db/{src_asset.id}"},
     )
     ctx.session.add(job)
     await ctx.session.flush()
@@ -211,5 +220,24 @@ async def delete_job(
                 os.remove(path)
         except OSError:
             pass
+    # In-DB media owned by this job (source image + compiled target).
+    params = job.params or {}
+    for url in (params.get("sourceImageUrl"), params.get("targetUrl")):
+        if not url or not url.startswith("/media/db/"):
+            continue
+        try:
+            asset_id = uuid.UUID(url.rsplit("/", 1)[-1])
+        except ValueError:
+            continue
+        asset = (
+            await ctx.session.execute(
+                select(MediaAsset).where(
+                    MediaAsset.id == asset_id,
+                    MediaAsset.tenant_id == ctx.identity.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if asset is not None:
+            await ctx.session.delete(asset)
     await ctx.session.delete(job)
     await ctx.session.commit()

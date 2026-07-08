@@ -33,6 +33,14 @@ async def test_model3d_full_flow_with_mock_provider(client, demo):
     assert job["status"] == "pending"
     assert job["provider"] == "mock"
 
+    # Source image is stored in-DB (doubles as the printed AR target — must
+    # survive the ephemeral container disk) and served back at /media/db/*.
+    src_url = job["params"]["sourceImageUrl"]
+    assert src_url.startswith("/media/db/")
+    served = await client.get(src_url)
+    assert served.status_code == 200
+    assert served.content == TINY_PNG
+
     # Background task: submit + poll (mock succeeds after 2 polls ≈ 6 s).
     for _ in range(30):
         await asyncio.sleep(0.5)
@@ -52,7 +60,17 @@ async def test_model3d_full_flow_with_mock_provider(client, demo):
     )
     assert adjusted.status_code == 200
     params = adjusted.json()["params"]
-    assert params == {"scale": 0.8, "colorTint": "#ff8800", "yOffset": 0.1}
+    assert params["scale"] == 0.8
+    assert params["colorTint"] == "#ff8800"
+    assert params["yOffset"] == 0.1
+    assert params["sourceImageUrl"] == src_url  # adjustments never drop it
+
+    # Deleting the job cleans up its in-DB media too.
+    deleted = await client.delete(
+        f"/api/admin/model3d/jobs/{job['id']}", headers=bearer(token)
+    )
+    assert deleted.status_code == 204
+    assert (await client.get(src_url)).status_code == 404
 
 
 async def test_model3d_rejects_bad_uploads(client, demo):
