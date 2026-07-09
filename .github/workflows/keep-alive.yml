@@ -1,0 +1,54 @@
+# Keep-alive: ping Render free-tier services every ~10 min so they don't
+# spin down (cold start returns 500/502/504 for ~20-50s on wake). Demo-phase
+# workaround for free tier — for real handover, upgrade to Render Starter.
+name: keep-alive
+
+on:
+  schedule:
+    # Every 10 minutes. Note: GitHub cron is best-effort and can be delayed
+    # several minutes under load, so we keep the interval below Render's ~15m
+    # idle timeout with margin.
+    - cron: "*/10 * * * *"
+  # Allow manual trigger from the Actions tab for on-demand wake-up.
+  workflow_dispatch:
+
+# Don't pile up runs if one is slow; keep the latest.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping services
+        run: |
+          set -u
+          # Backend uses /healthz (root is 404 by design); frontend uses root.
+          urls=(
+            "https://zoustec-backend.onrender.com/healthz"
+            "https://zoustec-frontend.onrender.com/"
+          )
+          fail=0
+          for url in "${urls[@]}"; do
+            # Retry to absorb the cold-start window: first hit may wake the
+            # service (500/502/504), later hits should return 200.
+            ok=0
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$url" || echo "000")
+              echo "[$attempt/5] $url -> $code"
+              if [ "$code" = "200" ]; then
+                ok=1
+                break
+              fi
+              sleep 15
+            done
+            if [ "$ok" != "1" ]; then
+              echo "::warning::$url did not return 200 after retries"
+              fail=1
+            fi
+          done
+          # Keep-alive is best-effort: a still-waking service shouldn't spam
+          # failure emails. Warn (above) but exit 0.
+          exit 0
