@@ -74,6 +74,84 @@ async def test_model3d_full_flow_with_mock_provider(client, demo):
     assert (await client.get(src_url)).status_code == 404
 
 
+async def test_model3d_animate_flow(client, demo, monkeypatch):
+    # Rigging seam: the mock engine refuses explicitly; a rigging-capable
+    # engine produces walk/run variants persisted in-DB, switchable per job.
+    from app.providers import model3d as providers
+    from app.services import model3d as m3d_service
+
+    token = await login(client, "alpha", "admin-a")
+    created = await client.post(
+        "/api/admin/model3d/jobs?name=Rig Me", headers=bearer(token), files=png_upload(),
+    )
+    job = created.json()
+    for _ in range(30):
+        await asyncio.sleep(0.5)
+        job = (
+            await client.get(f"/api/admin/model3d/jobs/{job['id']}", headers=bearer(token))
+        ).json()
+        if job["status"] in ("succeeded", "failed"):
+            break
+    assert job["status"] == "succeeded"
+    static_url = job["result_glb_url"]
+
+    # Default (mock) engine → explicit unsupported error.
+    r = await client.post(f"/api/admin/model3d/jobs/{job['id']}/animate", headers=bearer(token))
+    assert r.status_code == 422 and r.json()["error"]["code"] == "rigging_unsupported"
+
+    # Swap in a rigging-capable fake engine and stub the GLB download.
+    class FakeRigProvider(providers.MockModel3DProvider):
+        supports_rigging = True
+
+        async def submit_rigging(self, input_task_id):
+            return providers.SubmitResult(provider_job_id=f"rig-{input_task_id}")
+
+        async def poll_rigging(self, rig_task_id):
+            return providers.RigPollResult(
+                status="succeeded",
+                walk_glb_url="https://engine.example/walk.glb",
+                run_glb_url="https://engine.example/run.glb",
+            )
+
+    monkeypatch.setattr(providers, "_provider", FakeRigProvider())
+
+    async def fake_download(url):
+        return b"GLB-" + url.encode()
+
+    monkeypatch.setattr(m3d_service, "_download_bytes", fake_download)
+
+    r = await client.post(f"/api/admin/model3d/jobs/{job['id']}/animate", headers=bearer(token))
+    assert r.status_code == 200, r.text
+    assert r.json()["params"]["rig"]["status"] == "processing"
+
+    for _ in range(30):
+        await asyncio.sleep(0.5)
+        job = (
+            await client.get(f"/api/admin/model3d/jobs/{job['id']}", headers=bearer(token))
+        ).json()
+        if (job["params"].get("rig") or {}).get("status") in ("succeeded", "failed"):
+            break
+    assert job["params"]["rig"]["status"] == "succeeded", job
+    variants = job["params"]["variants"]
+    assert set(variants) == {"static", "walk", "run"}
+    assert variants["static"] == static_url
+
+    # Animated GLBs live in DB media and are served back.
+    walk = await client.get(variants["walk"])
+    assert walk.status_code == 200
+    assert walk.content == b"GLB-https://engine.example/walk.glb"
+
+    # Switching variants swaps the served GLB; static restores the original.
+    r = await client.patch(f"/api/admin/model3d/jobs/{job['id']}", headers=bearer(token),
+                           json={"variant": "walk"})
+    assert r.status_code == 200
+    assert r.json()["result_glb_url"] == variants["walk"]
+    assert r.json()["params"]["activeVariant"] == "walk"
+    r = await client.patch(f"/api/admin/model3d/jobs/{job['id']}", headers=bearer(token),
+                           json={"variant": "static"})
+    assert r.json()["result_glb_url"] == static_url
+
+
 async def test_model3d_rejects_bad_uploads(client, demo):
     token = await login(client, "alpha", "admin-a")
 

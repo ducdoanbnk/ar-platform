@@ -42,10 +42,21 @@ class PollResult:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class RigPollResult:
+    status: str  # "processing" | "succeeded" | "failed"
+    walk_glb_url: str | None = None
+    run_glb_url: str | None = None
+    error: str | None = None
+
+
 class Model3DProvider(ABC):
     """The seam. One instance per configured engine."""
 
     name: str
+    # Auto-rig + preset animations (walk/run). Engines without it keep the
+    # default; the API returns an explicit "unsupported" error to the studio.
+    supports_rigging: bool = False
 
     @abstractmethod
     async def submit(self, image_path: str, job_id: str, prompt: str = "") -> SubmitResult:
@@ -56,6 +67,14 @@ class Model3DProvider(ABC):
     @abstractmethod
     async def poll(self, provider_job_id: str) -> PollResult:
         """Check job progress. Called until a terminal status is returned."""
+
+    async def submit_rigging(self, input_task_id: str) -> SubmitResult:
+        """Start auto-rigging of a previously generated model."""
+        raise NotImplementedError
+
+    async def poll_rigging(self, rig_task_id: str) -> RigPollResult:
+        """Check rigging progress; terminal result carries animated GLB URLs."""
+        raise NotImplementedError
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +123,7 @@ class MeshyModel3DProvider(Model3DProvider):
     """
 
     name = "meshy"
+    supports_rigging = True
     BASE = "https://api.meshy.ai/openapi/v1"
 
     def __init__(self) -> None:
@@ -157,6 +177,40 @@ class MeshyModel3DProvider(Model3DProvider):
         if status in ("FAILED", "CANCELED"):
             return PollResult(status="failed", error=body.get("task_error", {}).get("message", status))
         return PollResult(status="processing")
+
+    async def submit_rigging(self, input_task_id: str) -> SubmitResult:
+        """Auto-rig a finished image-to-3d task (humanoid, textured models).
+        Meshy's rigging task also renders walk/run preset animations."""
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{self.BASE}/rigging",
+                headers=self._headers(),
+                json={"input_task_id": input_task_id},
+            )
+        resp.raise_for_status()
+        return SubmitResult(provider_job_id=resp.json()["result"])
+
+    async def poll_rigging(self, rig_task_id: str) -> RigPollResult:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"{self.BASE}/rigging/{rig_task_id}", headers=self._headers()
+            )
+        if resp.status_code != 200:
+            return RigPollResult(status="failed", error=f"meshy rig poll {resp.status_code}")
+        body = resp.json()
+        status = body.get("status")
+        if status == "SUCCEEDED":
+            anims = (body.get("result") or {}).get("basic_animations") or {}
+            walk, run = anims.get("walking_glb_url"), anims.get("running_glb_url")
+            if not walk and not run:
+                return RigPollResult(status="failed", error="meshy returned no animation GLB")
+            return RigPollResult(status="succeeded", walk_glb_url=walk, run_glb_url=run)
+        if status in ("FAILED", "CANCELED"):
+            return RigPollResult(
+                status="failed",
+                error=(body.get("task_error") or {}).get("message") or status,
+            )
+        return RigPollResult(status="processing")
 
     async def _download_to_media(self, url: str, provider_job_id: str) -> str:
         """Persist the provider-hosted GLB under /media (provider URLs expire)."""

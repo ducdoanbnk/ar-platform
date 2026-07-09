@@ -100,9 +100,11 @@ export default function Page() {
     return () => window.removeEventListener('focus', onFocus);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poll while any job is still generating.
+  // Poll while any job is still generating (model or rigging/animation).
   useEffect(() => {
-    if (!jobs?.some((j) => j.status === 'pending' || j.status === 'processing')) return;
+    if (!jobs?.some((j) =>
+      j.status === 'pending' || j.status === 'processing' || j.params?.rig?.status === 'processing'
+    )) return;
     const t = setInterval(async () => {
       try { await refresh(); } catch { /* keep polling */ }
     }, 2500);
@@ -166,6 +168,30 @@ export default function Page() {
       note('已開始生成 — AI 處理中');
       compileTarget(job.id, file); // runs in the background with its own progress
     } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); if (fileRef.current) fileRef.current.value = ''; }
+  }
+
+  /** Auto-rig + preset walk/run animations (engine capability, e.g. Meshy). */
+  async function animate() {
+    if (!sel || busy) return;
+    setBusy('animate'); setError('');
+    try {
+      const updated = await adminApi(`/api/admin/model3d/jobs/${sel.id}/animate`, { method: 'POST' });
+      setJobs(jobs.map((j) => (j.id === updated.id ? updated : j)));
+      pick(updated);
+      note('動作生成中 — 約 1–2 分鐘');
+    } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); }
+  }
+
+  /** Serve a different GLB variant (static / walk / run) for this model. */
+  async function setVariant(v) {
+    if (!sel || busy) return;
+    setBusy('variant'); setError('');
+    try {
+      const updated = await adminApi(`/api/admin/model3d/jobs/${sel.id}`, { method: 'PATCH', body: { variant: v } });
+      setJobs(jobs.map((j) => (j.id === updated.id ? updated : j)));
+      pick(updated);
+      note('已切換動作 ✓');
+    } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); }
   }
 
   async function saveAdjust() {
@@ -353,6 +379,54 @@ export default function Page() {
           )}
         </Step>
         ); })()}
+
+        {/* Actions — auto-rig + preset animations (engine capability) */}
+        {sel.status === 'succeeded' && (() => {
+          const rig = sel.params?.rig;
+          const variants = sel.params?.variants || {};
+          const active = sel.params?.activeVariant || 'static';
+          const CHIP = { static: '靜態', walk: '走路', run: '跑步' };
+          return (
+            <>
+              <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', margin:'18px 0 10px'}}>動作（骨骼動畫）</div>
+              {!rig ? (
+                <>
+                  <button onClick={animate} disabled={busy === 'animate'}
+                    style={{width:'100%', height:'40px', borderRadius:'9px', border:'1.5px solid var(--primary-600)', background:'#fff', color:'var(--primary-600)', fontSize:'13px', fontWeight:'700', cursor:'pointer', opacity: busy === 'animate' ? .6 : 1}}>
+                    {busy === 'animate' ? '啟動中…' : '生成動作（走路＋跑步）'}
+                  </button>
+                  <div style={{fontSize:'10.5px', color:'var(--text-subtle)', marginTop:'6px', lineHeight:1.6}}>
+                    自動綁骨後產生走路／跑步動畫（約 5 credits）。僅適合「人形、有貼圖、四肢清楚」的模型；示範引擎不支援。
+                  </div>
+                </>
+              ) : rig.status === 'processing' ? (
+                <div style={{display:'flex', alignItems:'center', gap:'9px', padding:'11px 12px', borderRadius:'9px', background:'var(--primary-50)', color:'var(--primary-700)', fontSize:'12px', fontWeight:'700'}}>
+                  <span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0', animation:'spin 1.2s linear infinite'}}><Icon name="loader" /></span>
+                  綁骨與動作生成中…（約 1–2 分鐘）
+                </div>
+              ) : rig.status === 'failed' ? (
+                <>
+                  <div style={{padding:'10px 12px', borderRadius:'9px', background:'var(--status-danger-bg)', color:'var(--status-danger-fg)', fontSize:'11.5px', fontWeight:'600', lineHeight:1.5, marginBottom:'8px'}}>{rig.error || '動作生成失敗'}</div>
+                  <button onClick={animate} disabled={busy === 'animate'} style={{height:'32px', padding:'0 14px', borderRadius:'8px', border:'1px solid var(--primary-600)', background:'#fff', color:'var(--primary-600)', fontSize:'12px', fontWeight:'700', cursor:'pointer'}}>重試</button>
+                </>
+              ) : (
+                <>
+                  <div style={{display:'flex', gap:'8px'}}>
+                    {['static', 'walk', 'run'].filter((v) => variants[v]).map((v) => (
+                      <button key={v} onClick={() => setVariant(v)} disabled={busy === 'variant' || active === v}
+                        style={{flex:1, height:'36px', borderRadius:'9999px', border: active === v ? 'none' : '1px solid var(--border-default)', background: active === v ? 'var(--primary-600)' : '#fff', color: active === v ? '#fff' : 'var(--text-body)', fontSize:'12.5px', fontWeight:'700', cursor: active === v ? 'default' : 'pointer'}}>
+                        {CHIP[v]}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:'10.5px', color:'var(--text-subtle)', marginTop:'6px', lineHeight:1.6}}>
+                    切換後預覽與 AR 都會使用此動作。已指派給任務的模型，請到產生器重新選擇一次才會套用。
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
 
         <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', margin:'18px 0 12px'}}>調整</div>
         <div style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', marginBottom:'7px'}}>名稱（顯示於產生器下拉選單）</div>

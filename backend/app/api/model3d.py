@@ -18,7 +18,7 @@ from app.models import MediaAsset, Model3DJob
 from app.providers.model3d import get_model3d_provider
 from app.schemas import Model3DAdjustRequest, Model3DJobOut
 from app.services.audit import record_audit
-from app.services.model3d import run_model3d_job
+from app.services.model3d import run_model3d_job, run_rigging_job
 
 router = APIRouter(prefix="/api/admin/model3d", tags=["model3d"])
 
@@ -178,6 +178,41 @@ async def get_job(
     return Model3DJobOut.model_validate(await _get_job(ctx, job_id))
 
 
+@router.post("/jobs/{job_id}/animate", response_model=Model3DJobOut)
+async def animate_job(
+    job_id: uuid.UUID,
+    background: BackgroundTasks,
+    ctx: AuthContext = Depends(tenant_admin_context),
+) -> Model3DJobOut:
+    """Auto-rig the generated model and produce preset walk/run animations
+    (engine capability — Meshy today, the official engine later). The animated
+    GLBs are persisted in-DB; the studio then picks a variant per job."""
+    job = await _get_job(ctx, job_id)
+    provider = get_model3d_provider()
+    if not provider.supports_rigging:
+        raise ApiError(422, "rigging_unsupported", "示範引擎不支援動作生成 — 需使用正式 3D 引擎（如 Meshy）。")
+    if job.status != "succeeded" or not job.provider_job_id:
+        raise ApiError(422, "job_not_ready", "3D 模型生成完成後才能生成動作。")
+    if ((job.params or {}).get("rig") or {}).get("status") == "processing":
+        raise ApiError(409, "rigging_in_progress", "動作生成進行中，請稍候。")
+
+    job.params = {**(job.params or {}), "rig": {"status": "processing"}}
+    await record_audit(
+        ctx.session,
+        tenant_id=ctx.identity.tenant_id,
+        actor_type="tenant_admin",
+        actor_id=ctx.identity.subject_id,
+        action="model3d.rigging_started",
+        entity_type="model3d_job",
+        entity_id=job.id,
+        data={},
+    )
+    await ctx.session.commit()
+
+    background.add_task(run_rigging_job, ctx.identity.tenant_id, job.id)
+    return Model3DJobOut.model_validate(job)
+
+
 @router.patch("/jobs/{job_id}", response_model=Model3DJobOut)
 async def adjust_job(
     job_id: uuid.UUID,
@@ -193,6 +228,14 @@ async def adjust_job(
         job.name = changes.pop("name")
 
     params = dict(job.params or {})
+    if "variant" in changes:
+        # Switch the served GLB between static / walk / run (post-rigging).
+        variant = changes.pop("variant")
+        url = (params.get("variants") or {}).get(variant)
+        if not url:
+            raise ApiError(422, "variant_unavailable", "此動作尚未生成 — 請先執行「生成動作」。")
+        job.result_glb_url = url
+        params["activeVariant"] = variant
     key_map = {"scale": "scale", "y_offset": "yOffset", "color_tint": "colorTint"}
     for field, param in key_map.items():
         if field in changes:

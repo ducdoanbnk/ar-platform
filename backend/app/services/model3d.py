@@ -5,17 +5,25 @@ slots in here unchanged if load grows — the provider seam is untouched)."""
 import asyncio
 import uuid
 
+import httpx
 import structlog
 from sqlalchemy import select
 
 from app.db.session import tenant_session
-from app.models import Model3DJob
+from app.models import MediaAsset, Model3DJob
 from app.providers.model3d import get_model3d_provider
 
 logger = structlog.get_logger()
 
 POLL_INTERVAL_S = 3.0
 MAX_POLLS = 200  # ~10 min ceiling — generation beyond that marks the job failed
+
+
+async def _download_bytes(url: str) -> bytes:
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        return resp.content
 
 
 async def run_model3d_job(tenant_id: uuid.UUID, job_id: uuid.UUID) -> None:
@@ -86,3 +94,102 @@ async def run_model3d_job(tenant_id: uuid.UUID, job_id: uuid.UUID) -> None:
         job.status = "failed"
         job.error = "timed out waiting for the 3D engine"
         await session.commit()
+
+
+async def _set_rig_state(tenant_id: uuid.UUID, job_id: uuid.UUID, rig: dict, extra: dict | None = None) -> None:
+    """Merge rigging state (and optional extra keys) into job.params — the
+    JSONB column needs a fresh dict for change detection."""
+    async with tenant_session(tenant_id) as session:
+        job = (
+            await session.execute(select(Model3DJob).where(Model3DJob.id == job_id))
+        ).scalar_one_or_none()
+        if job is None:
+            return
+        job.params = {**(job.params or {}), "rig": rig, **(extra or {})}
+        await session.commit()
+
+
+async def run_rigging_job(tenant_id: uuid.UUID, job_id: uuid.UUID) -> None:
+    """Background task: auto-rig a finished model and persist the animated
+    GLB variants (walk/run) into in-DB media — provider URLs expire, the AR
+    camera must be able to load them forever."""
+    provider = get_model3d_provider()
+
+    async with tenant_session(tenant_id) as session:
+        job = (
+            await session.execute(
+                select(Model3DJob).where(
+                    Model3DJob.id == job_id, Model3DJob.tenant_id == tenant_id
+                )
+            )
+        ).scalar_one_or_none()
+        if job is None or not job.provider_job_id:
+            return
+        static_url = job.result_glb_url
+        input_task_id = job.provider_job_id
+
+    try:
+        submit = await provider.submit_rigging(input_task_id)
+    except Exception as exc:
+        await _set_rig_state(
+            tenant_id, job_id, {"status": "failed", "error": f"submit failed: {exc}"[:500]}
+        )
+        logger.warning("rigging_submit_failed", job_id=str(job_id), error=str(exc))
+        return
+    await _set_rig_state(
+        tenant_id, job_id, {"status": "processing", "taskId": submit.provider_job_id}
+    )
+
+    for _ in range(MAX_POLLS):
+        await asyncio.sleep(POLL_INTERVAL_S)
+        try:
+            result = await provider.poll_rigging(submit.provider_job_id)
+        except Exception as exc:  # transient provider errors: keep polling
+            logger.info("rigging_poll_error", job_id=str(job_id), error=str(exc))
+            continue
+        if result.status == "processing":
+            continue
+
+        if result.status != "succeeded":
+            await _set_rig_state(
+                tenant_id, job_id,
+                {"status": "failed", "error": (result.error or "rigging failed")[:500]},
+            )
+            logger.info("rigging_job_failed", job_id=str(job_id), error=result.error)
+            return
+
+        # Persist each animated variant into DB media.
+        variants: dict[str, str] = {}
+        if static_url:
+            variants["static"] = static_url
+        async with tenant_session(tenant_id) as session:
+            for key, url in (("walk", result.walk_glb_url), ("run", result.run_glb_url)):
+                if not url:
+                    continue
+                try:
+                    data = await _download_bytes(url)
+                except Exception as exc:
+                    logger.warning("rigging_download_failed", job_id=str(job_id), variant=key, error=str(exc))
+                    continue
+                asset = MediaAsset(
+                    tenant_id=tenant_id, content_type="model/gltf-binary", data=data
+                )
+                session.add(asset)
+                await session.flush()
+                variants[key] = f"/media/db/{asset.id}"
+            await session.commit()
+
+        if len(variants) <= (1 if static_url else 0):
+            await _set_rig_state(
+                tenant_id, job_id, {"status": "failed", "error": "no animated GLB stored"}
+            )
+            return
+        await _set_rig_state(
+            tenant_id, job_id, {"status": "succeeded"}, extra={"variants": variants}
+        )
+        logger.info("rigging_job_done", job_id=str(job_id), variants=list(variants))
+        return
+
+    await _set_rig_state(
+        tenant_id, job_id, {"status": "failed", "error": "timed out waiting for rigging"}
+    )

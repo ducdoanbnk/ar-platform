@@ -360,6 +360,8 @@ class Model3DAdjustRequest(BaseModel):
     y_offset: float | None = Field(default=None, ge=-10, le=10)
     color_tint: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
     name: str | None = Field(default=None, max_length=255)
+    # Post-rigging: which GLB the tasks serve (params.variants holds the URLs).
+    variant: Literal["static", "walk", "run"] | None = None
 
 
 # ---------------------------------------------------------------- template export (headless)
