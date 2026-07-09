@@ -32,11 +32,15 @@ export default function GlbPreview({ url, tint, scale = 1, height = 300 }) {
       dir.position.set(1, 2, 2);
       scene.add(dir);
 
-      let model = null;
+      let model = null, mixer = null;
       try {
         const gltf = await new GLTFLoader().loadAsync(url);
         if (stop) return;
         model = gltf.scene;
+        if (gltf.animations?.length) {
+          mixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+        }
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3()).length() || 1;
         const centre = box.getCenter(new THREE.Vector3());
@@ -56,7 +60,9 @@ export default function GlbPreview({ url, tint, scale = 1, height = 300 }) {
       const loop = () => {
         if (stop) return;
         frame = requestAnimationFrame(loop);
-        if (model) model.rotation.y += clock.getDelta() * 0.8;
+        const dt = clock.getDelta();
+        if (mixer) mixer.update(dt); // play embedded GLB animation clips
+        if (model) model.rotation.y += dt * 0.8;
         renderer.render(scene, camera);
       };
       loop();

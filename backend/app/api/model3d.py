@@ -31,6 +31,7 @@ async def create_job(
     image: UploadFile,
     background: BackgroundTasks,
     name: str = "",
+    prompt: str = "",
     ctx: AuthContext = Depends(tenant_admin_context),
 ) -> Model3DJobOut:
     if image.content_type not in ALLOWED_IMAGE_TYPES:
@@ -62,13 +63,17 @@ async def create_job(
     with open(image_path, "wb") as f:
         f.write(data)
 
+    params = {"scale": 0.4, "sourceImageUrl": f"/media/db/{src_asset.id}"}
+    if prompt.strip():
+        # Optional user hint forwarded to the engine (e.g. Meshy texture_prompt).
+        params["prompt"] = prompt.strip()[:600]
     job = Model3DJob(
         tenant_id=tenant_id,
         name=name or (image.filename or "untitled"),
         status="pending",
         provider=get_model3d_provider().name,
         source_image_path=image_path,
-        params={"scale": 0.4, "sourceImageUrl": f"/media/db/{src_asset.id}"},
+        params=params,
     )
     ctx.session.add(job)
     await ctx.session.flush()

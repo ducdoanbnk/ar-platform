@@ -36,7 +36,9 @@ async def run_model3d_job(tenant_id: uuid.UUID, job_id: uuid.UUID) -> None:
             return
 
         try:
-            submit = await provider.submit(job.source_image_path, str(job.id))
+            submit = await provider.submit(
+                job.source_image_path, str(job.id), (job.params or {}).get("prompt") or ""
+            )
             job.status = "processing"
             job.provider_job_id = submit.provider_job_id
             await session.commit()

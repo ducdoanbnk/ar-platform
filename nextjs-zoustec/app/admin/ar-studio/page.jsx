@@ -49,6 +49,8 @@ export default function Page() {
   const [busy, setBusy] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [compiling, setCompiling] = useState({}); // jobId -> % | 'done' | 'failed'
+  const [prompt, setPrompt] = useState('');       // optional engine hint (style/material)
+  const [usage, setUsage] = useState({});         // glbUrl -> ["event／task", …]
   const [flash, setFlash] = useState('');
   const [error, setError] = useState('');
 
@@ -71,11 +73,31 @@ export default function Page() {
     return list;
   }
 
+  /** Which tasks already use each model — lights up pipeline step ④. */
+  async function loadUsage() {
+    try {
+      const events = await adminApi('/api/admin/events');
+      const map = {};
+      for (const ev of events) {
+        const tasks = await adminApi(`/api/admin/events/${ev.id}/tasks`);
+        for (const t of tasks) {
+          const g = t.ar_config?.glbUrl;
+          if (g) (map[g] = map[g] || []).push(`${ev.name}／${t.name}`);
+        }
+      }
+      setUsage(map);
+    } catch { /* enrichment only — never blocks the studio */ }
+  }
+
   useEffect(() => {
     (async () => {
-      try { await refresh(); }
+      try { await refresh(); loadUsage(); }
       catch (e) { if (!guard(e)) setError(e.message); }
     })();
+    // Coming back from the builder tab → re-check assignments.
+    const onFocus = () => loadUsage();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll while any job is still generating.
@@ -137,7 +159,9 @@ export default function Page() {
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const job = await adminUpload(`/api/admin/model3d/jobs?name=${encodeURIComponent(file.name.replace(/\.[^.]+$/, ''))}`, fd);
+      const q = new URLSearchParams({ name: file.name.replace(/\.[^.]+$/, '') });
+      if (prompt.trim()) q.set('prompt', prompt.trim());
+      const job = await adminUpload(`/api/admin/model3d/jobs?${q}`, fd);
       await refresh(job.id);
       note('已開始生成 — AI 處理中');
       compileTarget(job.id, file); // runs in the background with its own progress
@@ -207,6 +231,12 @@ export default function Page() {
         {busy === 'upload' ? '上傳中…' : '點擊或拖曳上傳吉祥物 / 角色圖'}
         <span style={{fontSize:'10.5px', fontWeight:'500'}}>PNG / JPG / WebP · ≤10MB · 這張圖也會成為現場辨識圖</span>
       </button>
+
+      <div style={{fontSize:'11px', fontWeight:'700', letterSpacing:'.08em', textTransform:'uppercase', color:'var(--text-subtle)', margin:'14px 0 7px'}}>生成需求（選填）</div>
+      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={600} rows={2}
+        placeholder="描述風格／材質，例如：毛絨玩具質感、卡通風格、金屬盔甲…"
+        style={{width:'100%', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'8px 11px', fontSize:'12px', color:'var(--text-strong)', outline:'none', resize:'vertical', fontFamily:'inherit', lineHeight:1.5}} />
+      <div style={{fontSize:'10px', color:'var(--text-subtle)', marginTop:'4px', lineHeight:1.5}}>AI 引擎會依此描述生成表面材質（影響外觀，不含動作；示範引擎會忽略）。</div>
 
       {error && <div style={{marginTop:'12px', padding:'10px', borderRadius:'8px', background:'var(--status-danger-bg)', color:'var(--status-danger-fg)', fontSize:'12px', fontWeight:'600'}}>{error}</div>}
 
@@ -313,13 +343,16 @@ export default function Page() {
           )}
         </Step>
 
-        {/* ④ Assign in the builder */}
-        <Step n="4" title="指派給任務" state={sel.status === 'succeeded' && sel.params?.targetUrl ? 'active' : 'todo'}
-          detail="產生器 → 點任務 → 3D 模型下拉選單（辨識圖會自動帶入）">
+        {/* ④ Assign in the builder — lights up green once a task uses it */}
+        {(() => { const used = usage[sel.result_glb_url] || []; return (
+        <Step n="4" title="指派給任務"
+          state={used.length ? 'done' : sel.status === 'succeeded' && sel.params?.targetUrl ? 'active' : 'todo'}
+          detail={used.length ? `已指派：${used.join('、')}` : '產生器 → 點任務 → 3D 模型下拉選單（辨識圖會自動帶入）'}>
           {sel.status === 'succeeded' && (
             <Link href="/admin/builder" style={{marginTop:'7px', display:'inline-flex', alignItems:'center', gap:'6px', height:'28px', padding:'0 11px', borderRadius:'7px', background:'var(--primary-600)', color:'#fff', fontSize:'11px', fontWeight:'700', textDecoration:'none'}}>前往產生器<span style={{fontSize:'12px', display:'inline-flex', lineHeight:'0'}}><Icon name="arrow-right" /></span></Link>
           )}
         </Step>
+        ); })()}
 
         <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', margin:'18px 0 12px'}}>調整</div>
         <div style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', marginBottom:'7px'}}>名稱（顯示於產生器下拉選單）</div>

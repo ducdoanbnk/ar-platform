@@ -75,6 +75,11 @@ export default function ARStage({ glbUrl, targetUrl, scale = 0.4, onComplete, on
         const model = gltf.scene;
         model.scale.set(scale, scale, scale);
         anchor.group.add(model);
+        let mixer = null;
+        if (gltf.animations?.length) {
+          mixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+        }
 
         anchor.onTargetFound = () => {
           emit('target-found');
@@ -96,7 +101,9 @@ export default function ARStage({ glbUrl, targetUrl, scale = 0.4, onComplete, on
 
         const clock = new THREE.Clock();
         renderer.setAnimationLoop(() => {
-          model.rotation.y += clock.getDelta() * 0.6;
+          const dt = clock.getDelta();
+          if (mixer) mixer.update(dt);       // animated GLB: play its clips
+          else model.rotation.y += dt * 0.6; // static mesh: gentle idle spin
           renderer.render(scene, camera);
         });
       } catch (e) {

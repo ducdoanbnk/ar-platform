@@ -48,8 +48,10 @@ class Model3DProvider(ABC):
     name: str
 
     @abstractmethod
-    async def submit(self, image_path: str, job_id: str) -> SubmitResult:
-        """Start an image→3D generation. Returns the provider's job reference."""
+    async def submit(self, image_path: str, job_id: str, prompt: str = "") -> SubmitResult:
+        """Start an image→3D generation. `prompt` is an optional user hint that
+        guides texturing/style (engines that don't support it just ignore it).
+        Returns the provider's job reference."""
 
     @abstractmethod
     async def poll(self, provider_job_id: str) -> PollResult:
@@ -72,7 +74,7 @@ class MockModel3DProvider(Model3DProvider):
     POLLS_UNTIL_DONE = 2
     RESULT_GLB_URL = "/models/mascot.glb"  # served by the frontend origin
 
-    async def submit(self, image_path: str, job_id: str) -> SubmitResult:
+    async def submit(self, image_path: str, job_id: str, prompt: str = "") -> SubmitResult:
         provider_job_id = f"mock-{job_id}"
         self._polls[provider_job_id] = 0
         return SubmitResult(provider_job_id=provider_job_id)
@@ -110,7 +112,7 @@ class MeshyModel3DProvider(Model3DProvider):
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
 
-    async def submit(self, image_path: str, job_id: str) -> SubmitResult:
+    async def submit(self, image_path: str, job_id: str, prompt: str = "") -> SubmitResult:
         import base64
         import mimetypes
 
@@ -118,16 +120,21 @@ class MeshyModel3DProvider(Model3DProvider):
         with open(image_path, "rb") as f:
             data_uri = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
 
+        payload = {
+            "image_url": data_uri,
+            "should_remesh": True,
+            # Target the agreed GLB spec (docs/glb-spec.md).
+            "target_polycount": 30000,
+        }
+        if prompt.strip():
+            # User style/material hint — guides Meshy's texturing pass.
+            payload["texture_prompt"] = prompt.strip()[:600]
+
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
                 f"{self.BASE}/image-to-3d",
                 headers=self._headers(),
-                json={
-                    "image_url": data_uri,
-                    "should_remesh": True,
-                    # Target the agreed GLB spec (docs/glb-spec.md).
-                    "target_polycount": 30000,
-                },
+                json=payload,
             )
         resp.raise_for_status()
         return SubmitResult(provider_job_id=resp.json()["result"])
