@@ -54,6 +54,7 @@ export default function Page() {
   const [usage, setUsage] = useState({});         // glbUrl -> ["event／task", …]
   const [flash, setFlash] = useState('');
   const [error, setError] = useState('');
+  const [glbMissing, setGlbMissing] = useState(null); // url whose GLB failed to load (404)
 
   function note(m) { setFlash(m); setTimeout(() => setFlash(''), 2500); }
   function guard(e) {
@@ -322,9 +323,19 @@ export default function Page() {
         </div>
       )}
       <div style={{flex:'1', display:'flex', alignItems:'center', justifyContent:'center', minHeight:'420px', padding:'20px'}}>
-        {sel?.status === 'succeeded' && sel.result_glb_url ? (
+        {sel?.status === 'succeeded' && sel.result_glb_url && glbMissing === sel.result_glb_url ? (
+          <div style={{color:'#FCA5A5', fontSize:'13.5px', fontWeight:'600', textAlign:'center', maxWidth:'42ch', lineHeight:1.7, display:'flex', flexDirection:'column', alignItems:'center', gap:'12px'}}>
+            <span style={{fontSize:'34px', display:'inline-flex', lineHeight:'0'}}><Icon name="alert-triangle" /></span>
+            此模型的 3D 檔已遺失（早期版本存於暫存磁碟，重新部署後被清除）。<br />請刪除此筆生成紀錄並重新上傳圖片生成。
+            <button onClick={() => removeJob(sel.id)} disabled={busy === 'del'}
+              style={{marginTop:'4px', height:'34px', padding:'0 16px', borderRadius:'8px', border:'1px solid rgba(255,255,255,.3)', background:'rgba(255,255,255,.08)', color:'#fff', fontSize:'12.5px', fontWeight:'700', cursor:'pointer'}}>
+              {busy === 'del' ? '刪除中…' : '刪除此紀錄'}
+            </button>
+          </div>
+        ) : sel?.status === 'succeeded' && sel.result_glb_url ? (
           <div style={{width:'100%', maxWidth:'560px'}}>
-            <GlbPreview url={sel.result_glb_url} tint={adjust?.color_tint || ''} scale={1} height={380} />
+            <GlbPreview url={sel.result_glb_url} tint={adjust?.color_tint || ''} scale={1} height={380}
+              onError={() => setGlbMissing(sel.result_glb_url)} />
           </div>
         ) : sel?.status === 'failed' ? (
           <div style={{color:'#FCA5A5', fontSize:'14px', fontWeight:'600', textAlign:'center', maxWidth:'40ch'}}>{sel.error || '生成失敗 — 請換一張圖再試'}</div>

@@ -5,7 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 
-export default function GlbPreview({ url, tint, scale = 1, height = 300 }) {
+export default function GlbPreview({ url, tint, scale = 1, height = 300, onError }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -54,7 +54,12 @@ export default function GlbPreview({ url, tint, scale = 1, height = 300 }) {
           });
         }
         scene.add(model);
-      } catch { /* keep an empty stage on load failure */ }
+      } catch {
+        // GLB unreachable (e.g. a pre-DB job whose disk file was wiped on
+        // redeploy → 404) or malformed. Keep an empty stage, but let the
+        // parent surface a "model missing" notice instead of a silent void.
+        if (!stop) onError?.();
+      }
 
       const clock = new THREE.Clock();
       const loop = () => {

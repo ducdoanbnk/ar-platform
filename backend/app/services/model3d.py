@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.db.session import tenant_session
 from app.models import MediaAsset, Model3DJob
-from app.providers.model3d import get_model3d_provider
+from app.providers.model3d import RiggingError, get_model3d_provider
 
 logger = structlog.get_logger()
 
@@ -152,6 +152,14 @@ async def run_rigging_job(tenant_id: uuid.UUID, job_id: uuid.UUID) -> None:
 
     try:
         submit = await provider.submit_rigging(input_task_id)
+    except RiggingError as exc:
+        # Actionable engine rejection (non-humanoid / expired task) — show the
+        # message as-is; it's already a clear zh-TW sentence for the admin.
+        await _set_rig_state(
+            tenant_id, job_id, {"status": "failed", "error": str(exc)[:500]}
+        )
+        logger.info("rigging_rejected", job_id=str(job_id), error=str(exc))
+        return
     except Exception as exc:
         await _set_rig_state(
             tenant_id, job_id, {"status": "failed", "error": f"submit failed: {exc}"[:500]}

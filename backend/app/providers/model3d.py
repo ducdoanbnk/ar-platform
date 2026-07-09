@@ -28,6 +28,12 @@ from dataclasses import dataclass
 import httpx
 
 
+class RiggingError(Exception):
+    """A rigging request the engine rejected for a reason the admin can act on
+    (non-humanoid model, expired input task). Carries a ready-to-show message;
+    the service stores it verbatim as the job's rig error."""
+
+
 @dataclass(frozen=True)
 class SubmitResult:
     provider_job_id: str
@@ -190,13 +196,25 @@ class MeshyModel3DProvider(Model3DProvider):
 
     async def submit_rigging(self, input_task_id: str) -> SubmitResult:
         """Auto-rig a finished image-to-3d task (humanoid, textured models).
-        Meshy's rigging task also renders walk/run preset animations."""
+        Meshy's rigging task also renders walk/run preset animations.
+
+        The payload/path are per the current docs; the interesting failures are
+        model-shape and task-lifetime ones, which Meshy signals with distinct
+        status codes — surface them as clear zh-TW messages instead of a raw
+        HTTPStatusError the admin can't act on:
+          422  pose estimation failed → the model isn't a valid humanoid
+          400  invalid/expired input task → the 3D model must be regenerated
+               (Meshy deletes generated tasks after 3 days)."""
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{self.BASE}/rigging",
                 headers=self._headers(),
                 json={"input_task_id": input_task_id},
             )
+        if resp.status_code == 422:
+            raise RiggingError("此模型不是「人形、有貼圖、四肢清楚」的角色，無法自動綁骨生成動作。")
+        if resp.status_code == 400:
+            raise RiggingError("3D 模型已失效（生成後逾 3 天會被引擎清除）— 請重新生成 3D 模型後再試。")
         resp.raise_for_status()
         return SubmitResult(provider_job_id=resp.json()["result"])
 
