@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '../../../components/Icon';
+import { Avatar } from '../../../components/Avatar';
 import { api, session } from '../../../lib/liff-client';
 
 const METHOD_LABEL = { qr: 'QR + AR', gps: 'GPS + AR', hybrid: 'QR + GPS + AR' };
@@ -44,7 +45,7 @@ export default function Page() {
   {/* Map area (decorative) */}
   <div style={{height:'320px', flex:'0 0 auto', position:'relative', background:'#E7EFEA', overflow:'hidden'}}>
     <svg viewBox="0 0 440 320" width="100%" height="320" preserveAspectRatio="xMidYMid slice" style={{position:'absolute', inset:'0'}}><rect width="440" height="320" fill="#DDE9E2"/><path d="M-10,90 C110,65 170,155 310,130 S470,165 470,165" fill="none" stroke="#C3D6CB" strokeWidth="28"/><path d="M60,-10 C85,90 35,165 125,245 S180,355 205,355" fill="none" stroke="#C3D6CB" strokeWidth="22"/><path d="M0,220 L440,238" stroke="#CBD9D0" strokeWidth="3"/><rect x="44" y="165" width="78" height="60" rx="6" fill="#CFDDD4"/><rect x="260" y="66" width="66" height="50" rx="6" fill="#CFDDD4"/><path d="M28,44 Q130,132 232,99 T436,121" fill="none" stroke="#0E7490" strokeWidth="3" strokeDasharray="2 7" strokeLinecap="round"/></svg>
-    <div style={{position:'absolute', top:'14px', left:'12px', right:'12px', display:'flex', alignItems:'center', gap:'9px', height:'42px', background:'#fff', borderRadius:'12px', boxShadow:'var(--shadow-md)', padding:'0 13px'}}><span style={{color:'var(--brand)', fontSize:'17px', display:'inline-flex', lineHeight:'0'}}><Icon name="navigation" /></span><span style={{fontSize:'13px', fontWeight:'700', color:'var(--text-strong)'}}>行程地圖</span><span style={{marginLeft:'auto', fontSize:'11px', fontWeight:'700', color:'var(--brand)', background:'var(--primary-50)', padding:'4px 9px', borderRadius:'9999px'}}>{done} / {total}</span></div>
+    <div style={{position:'absolute', top:'14px', left:'12px', right:'12px', display:'flex', alignItems:'center', gap:'9px', height:'42px', background:'#fff', borderRadius:'12px', boxShadow:'var(--shadow-md)', padding:'0 10px 0 8px'}}><Avatar src={session.avatar} name={session.name} size={30} /><span style={{fontSize:'13px', fontWeight:'700', color:'var(--text-strong)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{session.name || '行程地圖'}</span><span style={{marginLeft:'auto', fontSize:'11px', fontWeight:'700', color:'var(--brand)', background:'var(--primary-50)', padding:'4px 9px', borderRadius:'9999px', flex:'0 0 auto'}}>{done} / {total}</span></div>
     {(tasks || []).slice(0, 5).map((t, i) => {
       const spots = [[128, '22%'], [88, '58%'], [204, '44%'], [150, '75%'], [230, '18%']];
       const [top, left] = spots[i % spots.length];

@@ -24,6 +24,17 @@ async def test_login_creates_member_and_returns_session(client, demo):
     assert events.status_code == 200
 
 
+async def test_session_carries_picture_url_field(client, demo):
+    """The login response exposes `picture_url` so the client can show the LINE
+    avatar. Dev-mode tokens have no picture claim, so it comes back null."""
+    resp = await client.post(
+        "/api/auth/line", json={"id_token": "dev::pic::Pic", "tenant_slug": "alpha"}
+    )
+    assert resp.status_code == 200
+    assert "picture_url" in resp.json()
+    assert resp.json()["picture_url"] is None
+
+
 async def test_login_is_idempotent_same_member(client, demo):
     r1 = await client.post(
         "/api/auth/line", json={"id_token": "dev::alice::Alice", "tenant_slug": "alpha"}

@@ -41,6 +41,9 @@ class SessionResponse(BaseModel):
     member_id: uuid.UUID
     tenant_id: uuid.UUID | None
     display_name: str
+    # LINE avatar (from the OIDC `picture` claim) for player logins; null for
+    # password accounts and dev-mode logins.
+    picture_url: str | None = None
     # Set on password accounts still holding their provisioning password —
     # the frontend forces a password change before entering the dashboard.
     must_change_password: bool = False
@@ -325,6 +328,7 @@ class MemberOut(BaseModel):
     id: uuid.UUID
     line_user_id: str
     display_name: str
+    picture_url: str | None = None
     role: str
     created_at: datetime
     # Filled by the admin members listing (spec §IX: participant progress).

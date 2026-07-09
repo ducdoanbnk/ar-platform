@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '../../../../components/Icon';
+import { Avatar } from '../../../../components/Avatar';
 import AdminShell from '../../../../components/admin/AdminShell';
 import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
 import { fmt, fmtDate } from '../../../../lib/format';
@@ -95,7 +96,7 @@ export default function Page() {
                   <tr key={m.id} style={{borderTop:'1px solid var(--border-subtle)'}}>
                     <td style={{padding:'13px 20px'}}>
                       <div style={{display:'flex', alignItems:'center', gap:'11px'}}>
-                        <span style={{width:'34px', height:'34px', borderRadius:'9999px', background:'var(--primary-100)', color:'var(--primary-700)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700', fontSize:'12px', flex:'0 0 auto'}}>{(m.display_name || '?').slice(0, 2)}</span>
+                        <Avatar src={m.picture_url} name={m.display_name} size={34} />
                         <div><div style={{fontWeight:'700', color:'var(--text-strong)'}}>{m.display_name || '—'}</div><div style={{color:'var(--text-subtle)', fontSize:'11px', fontFamily:'var(--font-mono)'}}>{m.line_user_id}</div></div>
                       </div>
                     </td>

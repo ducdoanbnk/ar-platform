@@ -17,17 +17,19 @@
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
 const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID || '';
 
-const KEYS = { token: 'zx_token', name: 'zx_name', tenant: 'zx_tenant', event: 'zx_event', task: 'zx_task' };
+const KEYS = { token: 'zx_token', name: 'zx_name', avatar: 'zx_avatar', tenant: 'zx_tenant', event: 'zx_event', task: 'zx_task' };
 
 export const session = {
   get token() { return typeof window === 'undefined' ? null : localStorage.getItem(KEYS.token); },
   get name() { return typeof window === 'undefined' ? null : localStorage.getItem(KEYS.name); },
+  get avatar() { return typeof window === 'undefined' ? null : (localStorage.getItem(KEYS.avatar) || null); },
   get tenant() { return typeof window === 'undefined' ? null : localStorage.getItem(KEYS.tenant); },
   get eventId() { return typeof window === 'undefined' ? null : localStorage.getItem(KEYS.event); },
   get taskId() { return typeof window === 'undefined' ? null : localStorage.getItem(KEYS.task); },
-  setAuth(token, name, tenant) {
+  setAuth(token, name, tenant, avatar) {
     localStorage.setItem(KEYS.token, token);
     localStorage.setItem(KEYS.name, name || '');
+    localStorage.setItem(KEYS.avatar, avatar || '');
     localStorage.setItem(KEYS.tenant, tenant);
   },
   setEvent(id) { localStorage.setItem(KEYS.event, id); },
@@ -121,7 +123,7 @@ export async function loginWithLiff(tenant = DEFAULT_TENANT) {
     method: 'POST',
     body: { id_token: idToken, tenant_slug: tenant },
   });
-  session.setAuth(out.access_token, out.display_name, tenant);
+  session.setAuth(out.access_token, out.display_name, tenant, out.picture_url);
   return out;
 }
 
@@ -132,7 +134,7 @@ export async function loginDev(name, tenant = DEFAULT_TENANT) {
     method: 'POST',
     body: { id_token: `dev::${id}::${name.trim()}`, tenant_slug: tenant },
   });
-  session.setAuth(out.access_token, out.display_name, tenant);
+  session.setAuth(out.access_token, out.display_name, tenant, out.picture_url);
   return out;
 }
 

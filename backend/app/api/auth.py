@@ -118,6 +118,7 @@ async def login_with_line(body: LineLoginRequest) -> SessionResponse:
             member_id=member.id,
             tenant_id=tenant.id,
             display_name=member.display_name,
+            picture_url=member.picture_url,
         )
 
 

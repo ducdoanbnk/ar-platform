@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '../../../components/Icon';
+import { Avatar } from '../../../components/Avatar';
 import EventSections from '../../../components/event/EventSections';
 import { api, ensureEvent, getLiff, hasLiff, loginDev, loginWithLiff, resolveLiffId, session } from '../../../lib/liff-client';
 
@@ -82,7 +83,7 @@ export default function Page() {
         try {
           const ev = await ensureEvent(qEvent || undefined);
           if (!qEvent) setEvent(ev);
-          setMe({ display_name: session.name });
+          setMe({ display_name: session.name, picture_url: session.avatar });
           return;
         } catch { session.clear(); }
       }
@@ -163,7 +164,7 @@ export default function Page() {
     {/* Identity card: LIFF auto / dev name input */}
     {me ? (
       <div style={{position:'relative', marginTop:'auto', display:'flex', alignItems:'center', gap:'11px', padding:'12px', borderRadius:'14px', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.14)'}}>
-        <div style={{width:'38px', height:'38px', borderRadius:'9999px', background:'#6FCDE8', color:'#0B2935', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'800', fontSize:'14px'}}>{(me.display_name || '訪').slice(0, 2)}</div>
+        <Avatar src={me.picture_url} name={me.display_name} size={38} />
         <div style={{flex:'1', minWidth:'0'}}><div style={{fontSize:'13px', fontWeight:'700'}}>{me.display_name}</div><div style={{fontSize:'11px', color:'#8FB6C2'}}>{hasLiff() ? '透過 LINE 自動登入' : '開發模式登入'}</div></div>
         <span style={{color:'var(--success-500)', fontSize:'18px', display:'inline-flex', lineHeight:'0'}}><Icon name="circle-check" /></span>
       </div>
