@@ -1,7 +1,20 @@
 # LINE LIFF Fallback — Research Notes
 
 **Date:** 2026-07-06
-**Status:** Internal research — for team discussion
+**Status:** RESOLVED 2026-07-09 — see BAO-CAO-TUONG-THICH-LIFF-WEBAR.md
+
+> **Update 2026-07-09** — the two open questions below now have official answers:
+>
+> 1. **LINE MINI App is NOT a camera fallback.** LINE docs state a MINI App
+>    "runs as a LIFF app" — same LIFF browser, same WKWebView/Android WebView,
+>    same getUserMedia path. (Source: developers.line.biz/en/docs/line-mini-app/develop/web-to-mini-app/)
+> 2. **`openExternalBrowser=1` does not work on LIFF apps** — LINE documents
+>    the parameter as working for all URLs "except for on LIFF apps". The
+>    ARStage fallback button was fixed to use `liff.openWindow({external: true})`
+>    instead. (Source: developers.line.biz/en/docs/line-login/using-line-url-scheme/)
+>
+> The core conclusion of this note stands: manual code entry + GPS are the
+> only guaranteed fallbacks for camera failure.
 
 ---
 

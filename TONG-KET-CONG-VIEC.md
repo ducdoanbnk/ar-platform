@@ -123,6 +123,7 @@ Session sửa UX/nghiệp vụ 3 màn quản trị. Không đổi schema/migrati
 | `2c91463` | **AR Studio — 3 việc**: (1) **Rig 422/400 báo dễ hiểu**: payload/path Meshy `/rigging` VỐN ĐÚNG theo docs — 422 = model không phải nhân vật người hợp lệ (pose estimation failed), 400 = input task hết hạn (Meshy xóa task sau 3 ngày). Thêm `RiggingError`, map 2 mã thành câu zh-TW, `run_rigging_job` lưu nguyên văn vào `rig.error` (không còn `submit failed: ...` thô). (2) **GLB 404 job cũ**: job tạo trước `add9f86` lưu GLB ra disk ephemeral → redeploy mất → preview trống im lặng. `GlbPreview` thêm `onError`; AR Studio hiện cảnh báo "3D檔已遺失" + nút xóa nhanh. Job mới (GLB trong DB) không bị. (3) **Builder**: gỡ thanh stepper 1-2-3 (範本／內容／匯出) hardcode tĩnh gây hiểu nhầm "mãi không active" |
 | `04016e6` | **Dashboard 完成率 + builder chặn ngưỡng**: 完成率 cũ = `rewards_unlocked/participants` → luôn 0% khi 集章門檻 > số nhiệm vụ (reward không bao giờ mở khóa). Đổi thành `total_stamps / Σ(participants_of_event × tasks_of_event)` = tỷ lệ lượt nhiệm vụ thực sự hoàn thành, độc lập ngưỡng, luôn ≤100% (2 thừa số đều DISTINCT nên không fan-out bởi join Task×Stamp). Builder: ô 集章門檻 thêm `max`=số nhiệm vụ, cảnh báo vàng khi vượt, tự clamp khi lưu. Tests +1 assert (73/73) |
 | `4f109ed` | **Builder khóa AR 目標圖 theo model**: GLB + target là 1 cặp (cùng sinh từ 1 ảnh 2D ở AR Studio) → bỏ dropdown chọn target riêng (ngăn ghép mesh model A + marker model B). Chọn model → target tự bám, hiện read-only "已與上方模型配對"; model AI chưa compile target → cảnh báo + **chặn lưu**; demo→target demo; custom→vẫn cho nhập .mind URL. `selectTask` tái ghép target theo model khi mở task cũ lệch |
+| `03da578` | **Deliverable tương thích LIFF+WebAR** (spec Giai đoạn 1 mục 1): trang **`/diag`** đo tự động (camera latency, MindAR FPS 8s, WebGL/WebXR caps, tự chấm 達成/未達成, nút copy kết quả — mở LIFF permalink `/diag` trên máy nào là điền được ma trận máy đó); **fix nút mở trình duyệt ngoài** — `openExternalBrowser=1` KHÔNG có tác dụng trên LIFF app (docs LINE) → ARStage chuyển sang `liff.openWindow({external:true})`. Kèm **BAO-CAO-TUONG-THICH-LIFF-WEBAR.md**: benchmark đo được (M4 72fps / throttle 4x 40fps / 6x 28fps), ma trận thiết bị (còn thiếu Android thật — ưu tiên 1 iPhone đời thấp + 1 Android tầm trung), chiến lược khuyến nghị Ở LẠI TRONG LIFF, đáp án chính thức: WebXR không tồn tại trong LIFF cả 2 nền; MINI App = cùng runtime LIFF (không phải camera fallback); 8th Wall đã đóng cửa 2/2026 |
 
 **Chẩn đoán đáng nhớ (Meshy rigging 422 vs 400)**: rigging chỉ nhận model
 **người, có tay chân rõ, có texture, mặt hướng +Z**. Model không phải người
@@ -183,7 +184,10 @@ cấp bù hồi tố — xem mục 5 nếu cần).
    cho route `/e/`.
 4. **Bàn giao chính thức**: tắt `AUTH_DEV_MODE`; **đổi password Neon**
    (`npg_Wp3ivO5HtJBz` đã lộ trong chat) + password role `zoustec_app`;
-   điền ma trận tương thích thiết bị (test LINE thật iOS/Android trên prod).
+   điền ma trận tương thích thiết bị — mở LIFF permalink `/diag` trên từng
+   máy (~1 phút/máy), dán kết quả vào BAO-CAO-TUONG-THICH-LIFF-WEBAR.md
+   mục 5. Thiếu nhất: 1 iPhone đời thấp + 1 Android tầm trung (chưa có
+   datapoint Android thật nào).
 5. Nâng cấp SaaS (đã ghi trong CUSTOM-DOMAIN.md): tự động khai báo domain qua
    Render API, xác minh sở hữu domain bằng TXT, wildcard `{slug}.zoustec.app`,
    LIFF channel riêng từng tenant.
