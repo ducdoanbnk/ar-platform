@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { getLiff, resolveLiffId } from '../../lib/liff-client';
 
 const DWELL_MS = 1500;
 
@@ -28,8 +29,24 @@ function arCapable() {
 
 function externalBrowserUrl() {
   const url = new URL(window.location.href);
-  url.searchParams.set('openExternalBrowser', '1'); // honored by LINE
+  url.searchParams.set('openExternalBrowser', '1'); // honored by LINE's in-app browser, but NOT inside LIFF apps
   return url.toString();
+}
+
+/** Escape to the device's default browser. LINE ignores openExternalBrowser=1
+ * on LIFF URLs, so inside the LIFF browser the only working path is
+ * liff.openWindow({external: true}); the query param stays as fallback for
+ * the plain LINE in-app browser and external browsers. */
+async function openExternal() {
+  const target = externalBrowserUrl();
+  try {
+    const liff = await getLiff(await resolveLiffId());
+    if (liff?.isInClient?.()) {
+      liff.openWindow({ url: target, external: true });
+      return;
+    }
+  } catch { /* LIFF unavailable → plain navigation */ }
+  window.location.href = target;
 }
 
 export default function ARStage({ glbUrl, targetUrl, scale = 0.4, onComplete, onStatus }) {
@@ -135,7 +152,7 @@ export default function ARStage({ glbUrl, targetUrl, scale = 0.4, onComplete, on
           {!unsupported && (
             <button onClick={() => { setError(''); setRetryKey((k) => k + 1); }} style={{padding:'10px 18px', borderRadius:'9999px', background:'#fff', color:'var(--primary-800)', fontSize:'13px', fontWeight:'700', border:'none', cursor:'pointer'}}>重試</button>
           )}
-          <a href={externalBrowserUrl()} style={{padding:'10px 18px', borderRadius:'9999px', background:'rgba(255,255,255,.14)', color:'#fff', fontSize:'13px', fontWeight:'700', textDecoration:'none', border:'1px solid rgba(255,255,255,.3)'}}>在外部瀏覽器開啟</a>
+          <button onClick={openExternal} style={{padding:'10px 18px', borderRadius:'9999px', background:'rgba(255,255,255,.14)', color:'#fff', fontSize:'13px', fontWeight:'700', border:'1px solid rgba(255,255,255,.3)', cursor:'pointer'}}>在外部瀏覽器開啟</button>
         </div>
       </div>
     );
