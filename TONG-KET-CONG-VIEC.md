@@ -96,6 +96,9 @@ Tests: 67/67.
 | `7493047` | **Admin khách bỏ LINE login → email/password** (spec chỉ bắt LINE cho người chơi): console cấp tài khoản từ modal 白標設定 (mật khẩu tạm hiện 1 lần, bắt đổi lần đầu — token giữ memory tới khi đổi xong), nút 新增客戶 tạo tenant; migration 0008 (members.email/password_hash/must_change_password); /admin/login thành form email/password (dev-mode giữ). Tests 71/71 |
 | `4764d29` | Fix UX console: 自動建立 LIFF tự lưu form trước khi gọi API (hết 422 khó hiểu); validate slug phía client. Đã wipe data prod (giữ platform_admins) để test lại từ đầu |
 | `7fe9d95` | **Xây lại AR Studio thành pipeline 4 bước**: ① ảnh 2D gốc (= ảnh in nhận diện tại hiện trường — nút 開啟/列印/下載, hướng dẫn test) ② AI sinh 3D ③ compile .mind + nút 重新編譯 ④ chỉ định vào nhiệm vụ. **Ảnh gốc chuyển vào DB** (media_assets — trước đây nằm disk ephemeral, redeploy là mất; bug sót từ 3e53ae7); xóa job dọn luôn media. Thumbnail + kéo-thả |
+| `bf1f3a1`→`db17d0b` | **Meshy chạy thật trên prod** (user set env `MODEL3D_PROVIDER=meshy` + `MESHY_API_KEY`, ~1100 credits): fix dropdown 3D tụt về demo (mock URL giờ có `?m=` riêng từng job, builder khớp job trước demo); ô đổi tên job; box texture prompt khi upload; GlbPreview+ARStage phát animation GLB (AnimationMixer); bước ④ hiện ✓ kèm danh sách nhiệm vụ đang dùng model |
+| `f271c87` | **Sinh động tác trong hệ thống**: provider seam thêm rigging (Meshy auto-rig `input_task_id`, ~5 credits) → tải GLB walk/run vào DB → `params.variants`; POST `/jobs/{id}/animate`, PATCH `{variant}` đổi static/walk/run; UI mục 動作 với 3 chip. Chỉ hợp model dạng người có texture |
+| `add9f86` | **Fix GLB engine 404 sau redeploy** (GLB Meshy nằm disk ephemeral → chuyển vào media_assets DB, provider trả URL gốc để service tải) + **材質描述 theo từng model**: sửa mô tả + 依描述重新生成材質 (Meshy Retexture, ~10 credits, giữ hình đổi bề mặt, xóa rig cũ, provider_job_id trỏ sang retexture task) |
 
 Nghiệm thu trong session: hệ thống AR 2 bước chạy thật trên LINE iOS; BnK
 white-label trọn vẹn (domain riêng + LINE channel riêng, header LIFF hiện
@@ -160,8 +163,12 @@ Chẩn đoán đáng nhớ: "BE load chập" = 3 tầng — (1) lệch region Re
 5. Nâng cấp SaaS (đã ghi trong CUSTOM-DOMAIN.md): tự động khai báo domain qua
    Render API, xác minh sở hữu domain bằng TXT, wildcard `{slug}.zoustec.app`,
    LIFF channel riêng từng tenant.
-6. Khác: media sang Cloudflare R2 khi dung lượng lớn, Meshy API key cho
-   AI-3D thật, share-links panel trong builder.
+6. Khác: media sang Cloudflare R2 khi dung lượng lớn (GLB/ảnh giờ đều là
+   bytea trong Neon), share-links panel trong builder, nút upload GLB có
+   sẵn vào AR Studio (cắm model từ công cụ ngoài), Meshy Animation API
+   (thư viện động tác rộng hơn walk/run). Meshy đã chạy thật trên prod —
+   nhớ revoke key `msy_…` đã lộ trong chat khi bàn giao (cùng đợt đổi
+   password Neon).
 
 ## 6. Chạy local
 
