@@ -143,7 +143,57 @@ export const THEMES = {
   },
 };
 
-export function themeStyles(themeKey) {
+/** zh-TW-safe system font stacks for the theme customizer. */
+export const FONT_STACKS = {
+  sans: { label: '黑體（預設）', stack: '' },
+  serif: { label: '襯線體', stack: "Georgia, 'Noto Serif TC', 'Times New Roman', serif" },
+  rounded: { label: '圓體', stack: "'Yuanti TC', 'Hiragino Maru Gothic ProN', 'PingFang TC', sans-serif" },
+};
+
+/** Seeds the customizer from a preset — "以此主題為起點" in the editor. */
+export function presetToCustom(key) {
+  const t = THEMES[key] || THEMES.default;
+  const v = t.vars || {};
+  return {
+    pageBg: t.page?.background || '#ffffff',
+    pageText: t.page?.color || '',
+    cardBg: v['--surface-sunken'] || '',
+    solidCardBg: v['--site-card-bg'] || '',
+    cardBorder: v['--border-subtle'] || '',
+    textStrong: v['--text-strong'] || '',
+    textBody: v['--text-body'] || '',
+    textSubtle: v['--text-subtle'] || '',
+    radius: v['--site-radius'] || '14px',
+    btnRadius: v['--site-btn-radius'] || '9999px',
+    headingWeight: v['--site-heading-weight'] || '800',
+    font: t.font ? 'serif' : 'sans',
+    heroOverlay: '',
+  };
+}
+
+/** theme='custom' + a themeCustom object beats the preset registry —
+ * the WordPress-Customizer layer on top of ready-made themes. */
+export function themeStyles(themeKey, custom) {
+  if (themeKey === 'custom' && custom && Object.keys(custom).length) {
+    const c = custom;
+    const font = FONT_STACKS[c.font]?.stack || '';
+    const vars = {};
+    if (c.cardBg) vars['--surface-sunken'] = c.cardBg;
+    if (c.solidCardBg) vars['--site-card-bg'] = c.solidCardBg;
+    if (c.cardBorder) { vars['--border-subtle'] = c.cardBorder; vars['--border-default'] = c.cardBorder; }
+    if (c.textStrong) vars['--text-strong'] = c.textStrong;
+    if (c.textBody) vars['--text-body'] = c.textBody;
+    if (c.textSubtle) vars['--text-subtle'] = c.textSubtle;
+    if (c.radius) vars['--site-radius'] = c.radius;
+    if (c.btnRadius) vars['--site-btn-radius'] = c.btnRadius;
+    if (c.headingWeight) vars['--site-heading-weight'] = c.headingWeight;
+    if (font) vars.fontFamily = font;
+    const page = {};
+    if (c.pageBg) page.background = c.pageBg;
+    if (c.pageText) page.color = c.pageText;
+    if (font) page.fontFamily = font;
+    return { vars, page, hero: c.heroOverlay ? { overlay: `linear-gradient(${c.heroOverlay}, ${c.heroOverlay})` } : null };
+  }
   const t = THEMES[themeKey] || THEMES.default;
   return {
     vars: { ...t.vars, ...(t.font ? { fontFamily: t.font } : {}) },
@@ -569,8 +619,8 @@ export const siteConfig = {
       theme: { type: 'select', label: '佈景主題（套用整站）', options: Object.entries(THEMES).map(([value, t]) => ({ value, label: t.label })) },
     },
     defaultProps: { theme: 'default' },
-    render: ({ children, theme }) => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', ...themeStyles(theme).vars }}>{children}</div>
+    render: ({ children, theme, themeCustom }) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', ...themeStyles(theme, themeCustom).vars }}>{children}</div>
     ),
   },
 };

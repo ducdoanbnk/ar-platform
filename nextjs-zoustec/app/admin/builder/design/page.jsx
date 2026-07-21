@@ -18,12 +18,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Puck, createUsePuck } from '@measured/puck';
+import { Puck, Render, createUsePuck } from '@measured/puck';
 import '@measured/puck/puck.css';
 import { Icon } from '../../../../components/Icon';
 import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
 import { editorConfig, editorSubPageConfig } from '../../../../lib/puck-editor-config';
-import { sectionsToPuckData, upgradePuckDoc } from '../../../../lib/site-blocks';
+import { sectionsToPuckData, siteConfig, themeStyles, upgradePuckDoc } from '../../../../lib/site-blocks';
+import { SITE_TEMPLATES, applyTemplate } from '../../../../lib/site-templates';
 import { DEFAULT_SECTIONS } from '../../../../lib/event-sections';
 
 const TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
@@ -31,6 +32,36 @@ const usePuck = createUsePuck();
 const HOME = '__home__';
 
 const EMPTY_DOC = { root: { props: { theme: 'default' } }, content: [], zones: {} };
+
+// Sample data so template previews show believable smart blocks.
+const PREVIEW_META = {
+  event: { reward_threshold: 3, reward_name: '限定紀念禮' },
+  tasks: [
+    { name: '打卡點 A', verification_type: 'qr' },
+    { name: '打卡點 B', verification_type: 'gps', radius_m: 100 },
+  ],
+};
+
+/** Scaled-down live render of a template — the theme+layout ARE the
+ * thumbnail, no hand-made images to maintain. */
+function TplPreview({ tpl }) {
+  const t = themeStyles(tpl.theme);
+  const data = {
+    root: { props: { theme: tpl.theme } },
+    content: JSON.parse(JSON.stringify(tpl.home)).map((b) => {
+      if (b.type === 'Banner' && b.props.image === '__HERO__') b.props.image = '';
+      return b;
+    }),
+    zones: {},
+  };
+  return (
+    <div style={{ height: '160px', overflow: 'hidden', borderRadius: '9px', border: '1px solid var(--border-subtle)', pointerEvents: 'none', background: '#fff', ...t.page }}>
+      <div style={{ width: '940px', transform: 'scale(0.31)', transformOrigin: 'top left', padding: '14px' }}>
+        <Render config={siteConfig} data={data} metadata={PREVIEW_META} />
+      </div>
+    </div>
+  );
+}
 
 /** ASCII slug from a page title; zh-TW titles fall back to page-N. */
 function slugify(title, taken) {
@@ -69,6 +100,8 @@ export default function Page() {
   const [pages, setPages] = useState([]); // [{slug, title, nav, data}]
   const [cur, setCur] = useState(HOME); // HOME or a page slug
   const [newTitle, setNewTitle] = useState('');
+  const [tplModal, setTplModal] = useState(false);
+  const [rev, setRev] = useState(0); // bumps to remount Puck after applying a template
   const [tenant, setTenant] = useState(TENANT);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState('');
@@ -135,6 +168,20 @@ export default function Page() {
     setCur(slug);
   }
 
+  function applyTpl(tpl) {
+    // Keep the event's own settings (title/hero/reward/menu/CSS) — the
+    // template only replaces layout + theme + sub-pages.
+    const rp = (draftsRef.current[HOME] || homeDoc)?.root?.props || {};
+    const { home, pages: tplPages } = applyTemplate(tpl, rp);
+    draftsRef.current = {};
+    setHomeDoc(home);
+    setPages(tplPages);
+    setCur(HOME);
+    setRev((r) => r + 1);
+    setTplModal(false);
+    setFlash('已套用範本 — 按「儲存並發佈」生效'); setTimeout(() => setFlash(''), 3500);
+  }
+
   function removePage(slug) {
     if (!window.confirm('刪除此頁面？儲存後將無法復原。')) return;
     setPages(pages.filter((p) => p.slug !== slug));
@@ -191,6 +238,9 @@ export default function Page() {
 
       {/* ── Page rail (multipage manager) ─────────────────────────────── */}
       <aside style={{ width: '218px', flex: '0 0 auto', background: '#fff', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', padding: '14px 12px', gap: '7px', overflow: 'auto' }}>
+        <button onClick={() => setTplModal(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '10px', borderRadius: '9px', border: '1px solid var(--primary-200)', background: 'var(--primary-50)', color: 'var(--primary-700)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', marginBottom: '4px' }}>
+          <span style={{ fontSize: '15px', display: 'inline-flex', lineHeight: 0 }}><Icon name="layout-template" /></span>更換整站範本
+        </button>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-subtle)', margin: '0 4px 4px' }}>頁面</div>
 
         <div onClick={() => setCur(HOME)} style={railItem(cur === HOME)}>
@@ -232,7 +282,7 @@ export default function Page() {
       {/* ── Canvas — remount per document so Puck loads the right data ── */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <Puck
-          key={cur}
+          key={`${cur}:${rev}`}
           config={cur === HOME ? editorConfig : editorSubPageConfig}
           data={docFor(cur)}
           onChange={(d) => { draftsRef.current[cur] = d; }}
@@ -255,6 +305,30 @@ export default function Page() {
           <div style={{ position: 'fixed', bottom: '14px', right: '14px', zIndex: 50, padding: '10px 14px', borderRadius: '9px', background: 'var(--status-danger-bg, #FEE2E2)', color: 'var(--status-danger-fg, #B91C1C)', fontSize: '12.5px', fontWeight: 600, boxShadow: 'var(--shadow-lg)' }}>{error}</div>
         )}
       </div>
+
+      {/* ── Template gallery ──────────────────────────────────────────── */}
+      {tplModal && (
+        <div onClick={() => setTplModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(11,41,53,.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '22px', width: '100%', maxWidth: '980px', maxHeight: '86dvh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '18px', color: 'var(--primary-600)', display: 'inline-flex', lineHeight: 0 }}><Icon name="layout-template" /></span>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-strong)' }}>選擇整站範本</div>
+              <button onClick={() => setTplModal(false)} style={{ marginLeft: 'auto', width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ display: 'inline-flex', lineHeight: 0 }}><Icon name="x" /></span></button>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>套用範本會替換版面與佈景主題（活動標題、封面圖、獎勵與選單設定會保留）。按「儲存並發佈」後才會更新公開網站。</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+              {SITE_TEMPLATES.map((tpl) => (
+                <div key={tpl.key} style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <TplPreview tpl={tpl} />
+                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text-strong)' }}>{tpl.label}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>{tpl.desc}</div>
+                  <button onClick={() => applyTpl(tpl)} style={{ height: '36px', borderRadius: '9999px', background: 'var(--primary-600)', color: '#fff', border: 'none', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>套用此範本</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

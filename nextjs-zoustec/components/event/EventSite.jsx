@@ -77,7 +77,7 @@ export default function EventSite({ site, linkBase }) {
     ? `https://liff.line.me/${liffId}/experience/login?${joinQuery}`
     : `/experience/login?${joinQuery}`;
   const hero = event.config?.heroImage;
-  const theme = themeStyles(siteTheme(event));
+  const theme = themeStyles(siteTheme(event), siteRoot(event).themeCustom);
   // v2 (unified designer): stats/tasks are smart BLOCKS inside the document,
   // the admin decides where they appear. v1/legacy keeps the structural
   // sections so old sites don't change until re-published.

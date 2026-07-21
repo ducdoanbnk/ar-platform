@@ -17,7 +17,7 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { adminUpload } from './admin-client';
-import { siteConfig, THEMES, themeStyles } from './site-blocks';
+import { FONT_STACKS, presetToCustom, siteConfig, THEMES, themeStyles } from './site-blocks';
 
 function ImageUploadField({ value, onChange }) {
   const inputRef = useRef(null);
@@ -62,12 +62,13 @@ function ColorField({ value, onChange }) {
 }
 
 function ThemePickerField({ value, onChange }) {
+  const cardStyle = (active) => ({ padding: '8px', borderRadius: '9px', border: active ? '2px solid var(--primary-600)' : '1px solid var(--border-default)', background: active ? 'var(--primary-50)' : '#fff', cursor: 'pointer', textAlign: 'left' });
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
       {Object.entries(THEMES).map(([key, t]) => {
         const active = (value || 'default') === key;
         return (
-          <button key={key} type="button" onClick={() => onChange(key)} style={{ padding: '8px', borderRadius: '9px', border: active ? '2px solid var(--primary-600)' : '1px solid var(--border-default)', background: active ? 'var(--primary-50)' : '#fff', cursor: 'pointer', textAlign: 'left' }}>
+          <button key={key} type="button" onClick={() => onChange(key)} style={cardStyle(active)}>
             <span style={{ display: 'flex', gap: '3px', marginBottom: '6px' }}>
               {(t.swatch || []).map((c, i) => <span key={i} style={{ width: '16px', height: '16px', borderRadius: '5px', background: c, border: '1px solid rgba(0,0,0,.08)' }} />)}
             </span>
@@ -75,6 +76,64 @@ function ThemePickerField({ value, onChange }) {
           </button>
         );
       })}
+      <button type="button" onClick={() => onChange('custom')} style={cardStyle(value === 'custom')}>
+        <span style={{ display: 'flex', gap: '3px', marginBottom: '6px', fontSize: '16px', color: 'var(--primary-600)' }}><Icon name="sliders-horizontal" /></span>
+        <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-strong)' }}>自訂主題…</span>
+      </button>
+    </div>
+  );
+}
+
+/** WordPress-Customizer-style detail editor for theme='custom' — every
+ * design token exposed, seedable from any preset as a starting point. */
+function ThemeCustomizerField({ value, onChange }) {
+  const [seed, setSeed] = useState('default');
+  const c = value || {};
+  const set = (k, v) => onChange({ ...c, [k]: v });
+  const row = { display: 'flex', flexDirection: 'column', gap: '4px' };
+  const lab = { fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)' };
+  const sel = { height: '30px', border: '1px solid var(--border-default)', borderRadius: '7px', fontSize: '12px', padding: '0 6px', background: '#fff', color: 'var(--text-body)' };
+  const colorRow = (key, label) => (
+    <div style={row}><span style={lab}>{label}</span><ColorField value={c[key]} onChange={(v) => set(key, v)} /></div>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <select value={seed} onChange={(e) => setSeed(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0 }}>
+          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
+        </select>
+        <button type="button" onClick={() => onChange(presetToCustom(seed))} style={{ height: '30px', padding: '0 10px', borderRadius: '7px', background: 'var(--primary-600)', color: '#fff', border: 'none', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>以此為起點</button>
+      </div>
+      {colorRow('pageBg', '頁面背景')}
+      {colorRow('pageText', '頁面文字')}
+      {colorRow('textStrong', '標題文字')}
+      {colorRow('textBody', '內文文字')}
+      {colorRow('textSubtle', '次要文字')}
+      {colorRow('cardBg', '卡片背景（淺）')}
+      {colorRow('solidCardBg', '卡片背景（實心）')}
+      {colorRow('cardBorder', '卡片邊框')}
+      {colorRow('heroOverlay', 'Hero 遮罩色（建議 rgba）')}
+      <div style={row}><span style={lab}>字體</span>
+        <select value={c.font || 'sans'} onChange={(e) => set('font', e.target.value)} style={sel}>
+          {Object.entries(FONT_STACKS).map(([k, f]) => <option key={k} value={k}>{f.label}</option>)}
+        </select>
+      </div>
+      <div style={row}><span style={lab}>標題字重</span>
+        <select value={c.headingWeight || '800'} onChange={(e) => set('headingWeight', e.target.value)} style={sel}>
+          <option value="600">纖細（600）</option><option value="800">粗（800）</option><option value="900">特粗（900）</option>
+        </select>
+      </div>
+      <div style={row}><span style={lab}>卡片圓角</span>
+        <select value={c.radius || '14px'} onChange={(e) => set('radius', e.target.value)} style={sel}>
+          <option value="0">直角</option><option value="6px">6px</option><option value="14px">14px</option><option value="20px">20px</option><option value="28px">28px</option>
+        </select>
+      </div>
+      <div style={row}><span style={lab}>按鈕圓角</span>
+        <select value={c.btnRadius || '9999px'} onChange={(e) => set('btnRadius', e.target.value)} style={sel}>
+          <option value="0">直角</option><option value="8px">8px</option><option value="14px">14px</option><option value="9999px">全圓</option>
+        </select>
+      </div>
+      <div style={{ fontSize: '10.5px', color: 'var(--text-subtle)', lineHeight: 1.5 }}>需先於上方「佈景主題」選「自訂主題…」才會套用。</div>
     </div>
   );
 }
@@ -99,8 +158,8 @@ function resolveComponents(components) {
 /** WYSIWYG hero preview in the editor canvas — mirrors EventSite's hero
  * using the root props being edited. 隱藏預設 Hero shows the slim header the
  * public site falls back to (build a Banner block instead). */
-function EditorRoot({ children, title, description, heroImage, theme, hideHero, customCss }) {
-  const t = themeStyles(theme);
+function EditorRoot({ children, title, description, heroImage, theme, themeCustom, hideHero, customCss }) {
+  const t = themeStyles(theme, themeCustom);
   const overlay = t.hero?.overlay || 'linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66))';
   return (
     <div style={{ ...t.page }}>
@@ -149,9 +208,10 @@ export const editorConfig = {
         getItemSummary: (it) => it?.label || '選單項目',
       },
       theme: { type: 'custom', label: '佈景主題（套用整站）', render: ({ value, onChange }) => <ThemePickerField value={value} onChange={onChange} /> },
+      themeCustom: { type: 'custom', label: '主題細部自訂（選「自訂主題…」後生效）', render: ({ value, onChange }) => <ThemeCustomizerField value={value} onChange={onChange} /> },
       customCss: { type: 'textarea', label: '全站自訂 CSS（進階 — 可搭配區塊的 CSS class）' },
     },
-    defaultProps: { title: '', description: '', heroImage: '', hideHero: '', rewardName: '', rewardThreshold: 1, menu: [], theme: 'default', customCss: '' },
+    defaultProps: { title: '', description: '', heroImage: '', hideHero: '', rewardName: '', rewardThreshold: 1, menu: [], theme: 'default', themeCustom: {}, customCss: '' },
     render: EditorRoot,
   },
 };

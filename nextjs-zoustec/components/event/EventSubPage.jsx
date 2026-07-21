@@ -11,7 +11,7 @@ import { Icon } from '../Icon';
 import JoinCta from './JoinCta';
 import { brandPalette } from '../../lib/brand';
 import { siteConfig, themeStyles } from '../../lib/site-blocks';
-import { CustomCss, siteNav, siteTheme } from './EventSite';
+import { CustomCss, siteNav, siteRoot, siteTheme } from './EventSite';
 
 const WRAP = { maxWidth: '1140px', width: '100%', margin: '0 auto', padding: '0 clamp(16px, 4vw, 26px)' };
 
@@ -21,13 +21,14 @@ export default function EventSubPage({ site, page, linkBase }) {
   const base = linkBase ?? `/e/${branding.tenant_slug}`;
   const eventHref = `${base}/${event.slug}`;
   const nav = siteNav(event, eventHref);
-  const theme = themeStyles(siteTheme(event));
+  const theme = themeStyles(siteTheme(event), siteRoot(event).themeCustom);
   const liffId = branding.line_liff_id || process.env.NEXT_PUBLIC_LIFF_ID;
   const joinHref = liffId
     ? `https://liff.line.me/${liffId}/experience/login?tenant=${branding.tenant_slug}&event=${event.id}`
     : `/experience/login?tenant=${branding.tenant_slug}&event=${event.id}`;
-  // The home theme forced onto this page's root — one theme for the whole site.
-  const data = { ...page.data, root: { ...(page.data?.root || {}), props: { ...(page.data?.root?.props || {}), theme: siteTheme(event) } } };
+  // The home theme (incl. customizer values) forced onto this page's root —
+  // one theme for the whole site.
+  const data = { ...page.data, root: { ...(page.data?.root || {}), props: { ...(page.data?.root?.props || {}), theme: siteTheme(event), themeCustom: siteRoot(event).themeCustom } } };
 
   return (
 <div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, background: 'var(--surface-app)', display: 'flex', flexDirection: 'column', ...theme.vars, ...theme.page }}>
