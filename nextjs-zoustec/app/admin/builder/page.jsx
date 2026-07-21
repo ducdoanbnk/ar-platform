@@ -258,6 +258,7 @@ export default function Page() {
     <div style={{display:'flex', alignItems:'center', gap:'9px', fontSize:'14px', fontWeight:'700', color:'var(--text-strong)'}}><span style={{fontSize:'17px', color:'var(--primary-600)', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-template" /></span>網站產生器</div>
     <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'10px'}}>
       {flash && <span style={{fontSize:'12.5px', fontWeight:'700', color:'var(--success-600)'}}>{flash}</span>}
+      {event && <Link href={`/admin/builder/design?event=${event.id}`} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 13px', borderRadius:'8px', border:'1px solid var(--primary-200)', background:'var(--primary-50)', color:'var(--primary-700)', fontSize:'13px', fontWeight:'700', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-dashboard" /></span>拖曳設計</Link>}
       <button onClick={saveEvent} disabled={busy === 'save'} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 13px', borderRadius:'8px', border:'1px solid var(--border-default)', background:'#fff', color:'var(--text-body)', fontSize:'13px', fontWeight:'600', cursor:'pointer'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="save" /></span>{busy === 'save' ? '儲存中…' : '儲存'}</button>
       <button onClick={exportBundle} disabled={busy === 'export'} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 15px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', border:'none', cursor:'pointer'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="download" /></span>{busy === 'export' ? '匯出中…' : '匯出範本'}</button>
     </div>
@@ -333,7 +334,11 @@ export default function Page() {
             ))}
             {!tasks.length && <div style={{padding:'20px', textAlign:'center', color:'var(--text-subtle)', fontSize:'13px'}}>尚無任務 — 從左側新增</div>}
           </div>
-          {form?.sections?.filter((x) => !x.hidden).length > 0 && (
+          {event?.config?.puck ? (
+            <div style={{marginTop:'20px', padding:'14px', borderRadius:'11px', border:'1.5px dashed var(--border-default)', textAlign:'center', fontSize:'12px', color:'var(--text-muted)', lineHeight:1.6}}>
+              網站內容由「拖曳設計」編輯器管理 — 預覽請至<a href={`/e/${brand?.tenant_slug || TENANT}/${event?.slug}`} target="_blank" rel="noreferrer" style={{color:'var(--primary-600)', fontWeight:'700'}}>公開網站 ↗</a>
+            </div>
+          ) : form?.sections?.filter((x) => !x.hidden).length > 0 && (
             <div style={{marginTop:'20px'}}>
               <div style={{fontSize:'16px', fontWeight:'800', color:'var(--text-strong)', marginBottom:'12px'}}>活動資訊</div>
               <EventSections sections={form.sections} variant="light" />
@@ -437,7 +442,14 @@ export default function Page() {
           </div>
         )}
         <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'12px', fontSize:'11px', fontWeight:'700', letterSpacing:'.08em', textTransform:'uppercase', color:'var(--text-subtle)', marginBottom:'10px'}}>內容區塊（依活動類型）</div>
-        {(form.sections || []).map((sec, i) => {
+        {/* Once the event has a Puck document, the drag-drop designer is the
+            single source of truth — editing the legacy sections here would be
+            silently ignored by the public site. */}
+        {event?.config?.puck ? (
+          <div style={{padding:'12px', borderRadius:'10px', background:'var(--primary-50)', border:'1px solid var(--primary-200)', fontSize:'12px', color:'var(--primary-800)', lineHeight:1.6, marginBottom:'10px'}}>
+            此活動的網站內容已改用<b>拖曳設計</b>編輯 — 請由上方「拖曳設計」按鈕進入編輯，這裡的區塊設定已停用。
+          </div>
+        ) : (form.sections || []).map((sec, i) => {
           const meta = SECTION_TYPE_META[sec.type] || SECTION_TYPE_META.text;
           const setSec = (patch) => {
             const next = form.sections.map((x, j) => (j === i ? { ...x, ...patch } : x));
@@ -456,6 +468,11 @@ export default function Page() {
             </div>
           );
         })}
+        {!event?.config?.puck && (
+          <Link href={`/admin/builder/design?event=${event?.id}`} style={{display:'block', padding:'11px', borderRadius:'10px', border:'1.5px dashed var(--primary-300, var(--primary-200))', color:'var(--primary-700)', fontSize:'12px', fontWeight:'600', textDecoration:'none', textAlign:'center', lineHeight:1.6, marginBottom:'10px'}}>
+            想要更自由的版面？試試新的<b>拖曳設計</b>編輯器 →<br /><span style={{fontSize:'10.5px', color:'var(--text-subtle)', fontWeight:'500'}}>現有內容會自動帶入，可自由增刪區塊、排版面</span>
+          </Link>
+        )}
 
         <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'14px', fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.8}}>
           公開網址：<a href={`/e/${TENANT}/${event?.slug}`} target="_blank" rel="noreferrer" style={{fontFamily:'var(--font-mono)', color:'var(--primary-600)', fontWeight:'700'}}>/e/{TENANT}/{event?.slug} ↗</a><br />

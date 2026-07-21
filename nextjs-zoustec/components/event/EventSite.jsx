@@ -10,10 +10,12 @@
  */
 
 import Link from 'next/link';
+import { Render } from '@measured/puck/rsc';
 import { Icon } from '../Icon';
 import EventSections from './EventSections';
 import JoinCta from './JoinCta';
 import { brandPalette } from '../../lib/brand';
+import { siteConfig } from '../../lib/site-blocks';
 
 const TYPE_LABEL = { city: '城市探索', hiking: '登山步道', shopping: '購物中心' };
 const METHOD_ICON = { qr: 'qr-code', gps: 'map-pin', hybrid: 'scan-line' };
@@ -104,8 +106,12 @@ export default function EventSite({ site, linkBase }) {
       </div>
     </>)}
 
-    {/* Content sections (per event type) */}
-    {event.config?.sections?.filter((x) => !x.hidden).length > 0 && (<>
+    {/* Content: Puck document (drag-drop designer) wins over legacy sections */}
+    {event.config?.puck?.content?.length > 0 ? (
+      <div style={{marginBottom:'30px'}}>
+        <Render config={siteConfig} data={event.config.puck} />
+      </div>
+    ) : event.config?.sections?.filter((x) => !x.hidden).length > 0 && (<>
       <h2 style={{margin:'0 0 14px', fontSize:'clamp(18px, 2.2vw, 22px)', fontWeight:'800', color:'var(--text-strong)'}}>活動資訊</h2>
       <div style={{marginBottom:'30px'}}>
         <EventSections sections={event.config.sections} variant="light" />
