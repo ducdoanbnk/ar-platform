@@ -23,8 +23,8 @@ import '@measured/puck/puck.css';
 import { Icon } from '../../../../components/Icon';
 import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
 import { editorConfig, editorSubPageConfig } from '../../../../lib/puck-editor-config';
-import { sectionsToPuckData, siteConfig, themeStyles, upgradePuckDoc } from '../../../../lib/site-blocks';
-import { SITE_TEMPLATES, applyTemplate } from '../../../../lib/site-templates';
+import { sectionsToPuckData, siteConfig, THEMES, themeStyles, upgradePuckDoc } from '../../../../lib/site-blocks';
+import { SITE_TEMPLATES, TEMPLATE_CATS, applyTemplate } from '../../../../lib/site-templates';
 import { DEFAULT_SECTIONS } from '../../../../lib/event-sections';
 
 const TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
@@ -42,12 +42,13 @@ const PREVIEW_META = {
   ],
 };
 
-/** Scaled-down live render of a template — the theme+layout ARE the
- * thumbnail, no hand-made images to maintain. */
-function TplPreview({ tpl }) {
-  const t = themeStyles(tpl.theme);
+/** Scaled-down live render of a template in any color scheme — the
+ * theme+layout ARE the thumbnail, no hand-made images to maintain. */
+function TplPreview({ tpl, theme, height = 160, scale = 0.31, width = 940 }) {
+  const key = theme || tpl.theme;
+  const t = themeStyles(key);
   const data = {
-    root: { props: { theme: tpl.theme } },
+    root: { props: { theme: key } },
     content: JSON.parse(JSON.stringify(tpl.home)).map((b) => {
       if (b.type === 'Banner' && b.props.image === '__HERO__') b.props.image = '';
       return b;
@@ -55,8 +56,8 @@ function TplPreview({ tpl }) {
     zones: {},
   };
   return (
-    <div style={{ height: '160px', overflow: 'hidden', borderRadius: '9px', border: '1px solid var(--border-subtle)', pointerEvents: 'none', background: '#fff', ...t.page }}>
-      <div style={{ width: '940px', transform: 'scale(0.31)', transformOrigin: 'top left', padding: '14px' }}>
+    <div style={{ height: `${height}px`, overflow: 'hidden', borderRadius: '9px', border: '1px solid var(--border-subtle)', pointerEvents: 'none', background: '#fff', ...t.page }}>
+      <div style={{ width: `${width}px`, transform: `scale(${scale})`, transformOrigin: 'top left', padding: '14px' }}>
         <Render config={siteConfig} data={data} metadata={PREVIEW_META} />
       </div>
     </div>
@@ -101,6 +102,9 @@ export default function Page() {
   const [cur, setCur] = useState(HOME); // HOME or a page slug
   const [newTitle, setNewTitle] = useState('');
   const [tplModal, setTplModal] = useState(false);
+  const [tplCat, setTplCat] = useState('all'); // store category filter
+  const [tplTheme, setTplTheme] = useState({}); // per-layout chosen color scheme
+  const [tplBig, setTplBig] = useState(null); // template key open in large preview
   const [rev, setRev] = useState(0); // bumps to remount Puck after applying a template
   const [tenant, setTenant] = useState(TENANT);
   const [busy, setBusy] = useState(false);
@@ -168,17 +172,17 @@ export default function Page() {
     setCur(slug);
   }
 
-  function applyTpl(tpl) {
+  function applyTpl(tpl, themeKey) {
     // Keep the event's own settings (title/hero/reward/menu/CSS) — the
     // template only replaces layout + theme + sub-pages.
     const rp = (draftsRef.current[HOME] || homeDoc)?.root?.props || {};
-    const { home, pages: tplPages } = applyTemplate(tpl, rp);
+    const { home, pages: tplPages } = applyTemplate(tpl, rp, themeKey);
     draftsRef.current = {};
     setHomeDoc(home);
     setPages(tplPages);
     setCur(HOME);
     setRev((r) => r + 1);
-    setTplModal(false);
+    setTplModal(false); setTplBig(null);
     setFlash('已套用範本 — 按「儲存並發佈」生效'); setTimeout(() => setFlash(''), 3500);
   }
 
@@ -306,27 +310,78 @@ export default function Page() {
         )}
       </div>
 
-      {/* ── Template gallery ──────────────────────────────────────────── */}
+      {/* ── Theme store (佈景主題商店) — layout × color-scheme matrix ── */}
       {tplModal && (
-        <div onClick={() => setTplModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(11,41,53,.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', boxShadow: 'var(--shadow-xl)', padding: '22px', width: '100%', maxWidth: '980px', maxHeight: '86dvh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '18px', color: 'var(--primary-600)', display: 'inline-flex', lineHeight: 0 }}><Icon name="layout-template" /></span>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-strong)' }}>選擇整站範本</div>
-              <button onClick={() => setTplModal(false)} style={{ marginLeft: 'auto', width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ display: 'inline-flex', lineHeight: 0 }}><Icon name="x" /></span></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'var(--surface-app, #F3F6F8)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 22px', background: '#fff', borderBottom: '1px solid var(--border-subtle)', flex: '0 0 auto' }}>
+            <span style={{ fontSize: '19px', color: 'var(--primary-600)', display: 'inline-flex', lineHeight: 0 }}><Icon name="layout-template" /></span>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-strong)' }}>佈景主題商店</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{SITE_TEMPLATES.length} 種版型 × {Object.keys(THEMES).length} 種配色 — 套用後活動資料（標題／封面／獎勵／選單）全部保留</div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>套用範本會替換版面與佈景主題（活動標題、封面圖、獎勵與選單設定會保留）。按「儲存並發佈」後才會更新公開網站。</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
-              {SITE_TEMPLATES.map((tpl) => (
-                <div key={tpl.key} style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <TplPreview tpl={tpl} />
-                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text-strong)' }}>{tpl.label}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>{tpl.desc}</div>
-                  <button onClick={() => applyTpl(tpl)} style={{ height: '36px', borderRadius: '9999px', background: 'var(--primary-600)', color: '#fff', border: 'none', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>套用此範本</button>
-                </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {Object.entries(TEMPLATE_CATS).map(([k, label]) => (
+                <button key={k} onClick={() => setTplCat(k)} style={{ height: '32px', padding: '0 13px', borderRadius: '9999px', border: tplCat === k ? 'none' : '1px solid var(--border-default)', background: tplCat === k ? 'var(--primary-600)' : '#fff', color: tplCat === k ? '#fff' : 'var(--text-body)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>{label}</button>
               ))}
             </div>
+            <button onClick={() => setTplModal(false)} style={{ width: '34px', height: '34px', borderRadius: '9999px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}><span style={{ display: 'inline-flex', lineHeight: 0 }}><Icon name="x" /></span></button>
           </div>
+
+          <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              {SITE_TEMPLATES.filter((t) => tplCat === 'all' || t.cat === tplCat).map((tpl) => {
+                const chosen = tplTheme[tpl.key] || tpl.theme;
+                return (
+                  <div key={tpl.key} style={{ background: '#fff', border: '1px solid var(--border-subtle)', borderRadius: '13px', padding: '11px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: 'var(--shadow-sm)' }}>
+                    <div onClick={() => setTplBig(tpl.key)} style={{ cursor: 'zoom-in' }}><TplPreview tpl={tpl} theme={chosen} /></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text-strong)' }}>{tpl.label}</div>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-subtle)', background: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '9999px' }}>{TEMPLATE_CATS[tpl.cat] || ''}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: 'var(--text-subtle)', fontWeight: 600 }}>{THEMES[chosen]?.label}</span>
+                    </div>
+                    {/* Color-scheme dots — the "adaptatif" variants of this layout */}
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                      {Object.entries(THEMES).map(([k, t]) => (
+                        <button key={k} title={t.label} onClick={() => setTplTheme({ ...tplTheme, [tpl.key]: k })} style={{ width: '22px', height: '22px', borderRadius: '9999px', padding: 0, cursor: 'pointer', border: chosen === k ? '2.5px solid var(--primary-600)' : '1.5px solid var(--border-default)', background: `linear-gradient(135deg, ${t.swatch?.[0] || '#fff'} 50%, ${t.swatch?.[2] || '#888'} 50%)` }} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>{tpl.desc}</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setTplBig(tpl.key)} style={{ flex: 1, height: '36px', borderRadius: '9999px', background: '#fff', border: '1px solid var(--border-default)', color: 'var(--text-body)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>預覽</button>
+                      <button onClick={() => applyTpl(tpl, chosen)} style={{ flex: 1, height: '36px', borderRadius: '9999px', background: 'var(--primary-600)', color: '#fff', border: 'none', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>套用</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Large full-page preview */}
+          {tplBig && (() => {
+            const tpl = SITE_TEMPLATES.find((t) => t.key === tplBig);
+            if (!tpl) return null;
+            const chosen = tplTheme[tpl.key] || tpl.theme;
+            return (
+              <div onClick={() => setTplBig(null)} style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(11,41,53,.66)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '26px' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', boxShadow: 'var(--shadow-xl)', width: '100%', maxWidth: '820px', maxHeight: '90dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '13px 18px', borderBottom: '1px solid var(--border-subtle)', flex: '0 0 auto' }}>
+                    <div style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--text-strong)' }}>{tpl.label}</div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-subtle)', fontWeight: 600 }}>{THEMES[chosen]?.label}</span>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '5px' }}>
+                      {Object.entries(THEMES).map(([k, t]) => (
+                        <button key={k} title={t.label} onClick={() => setTplTheme({ ...tplTheme, [tpl.key]: k })} style={{ width: '22px', height: '22px', borderRadius: '9999px', padding: 0, cursor: 'pointer', border: chosen === k ? '2.5px solid var(--primary-600)' : '1.5px solid var(--border-default)', background: `linear-gradient(135deg, ${t.swatch?.[0] || '#fff'} 50%, ${t.swatch?.[2] || '#888'} 50%)` }} />
+                      ))}
+                    </div>
+                    <button onClick={() => applyTpl(tpl, chosen)} style={{ height: '34px', padding: '0 18px', borderRadius: '9999px', background: 'var(--primary-600)', color: '#fff', border: 'none', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>套用此設計</button>
+                    <button onClick={() => setTplBig(null)} style={{ width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ display: 'inline-flex', lineHeight: 0 }}><Icon name="x" /></span></button>
+                  </div>
+                  <div style={{ flex: 1, overflow: 'auto', background: 'var(--surface-sunken)' }}>
+                    <TplPreview tpl={tpl} theme={chosen} height={1400} scale={0.62} width={1260} />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

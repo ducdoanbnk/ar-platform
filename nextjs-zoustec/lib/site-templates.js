@@ -10,11 +10,23 @@
  * image at apply time, so templates look "theirs" immediately.
  */
 
+/** Store categories — WordPress-style browsing. */
+export const TEMPLATE_CATS = {
+  all: '全部',
+  city: '城市導覽',
+  brand: '品牌形象',
+  culture: '文化展覽',
+  night: '夜間活動',
+  outdoor: '戶外健行',
+  shopping: '購物商場',
+};
+
 export const SITE_TEMPLATES = [
   {
     key: 'classic',
     label: '經典清爽',
     desc: '預設佈局 — 數據看板、任務、景點與說明卡片。',
+    cat: 'city',
     theme: 'default',
     hideHero: '',
     home: [
@@ -28,6 +40,7 @@ export const SITE_TEMPLATES = [
   },
   {
     key: 'impact',
+    cat: 'brand',
     label: '形象大片',
     desc: '隱藏預設 Hero，自製滿版橫幅 + 粗獷字重，適合品牌活動。',
     theme: 'bold',
@@ -45,6 +58,7 @@ export const SITE_TEMPLATES = [
   },
   {
     key: 'magazine',
+    cat: 'culture',
     label: '典雅雜誌',
     desc: '襯線字體、窄欄置中排版，適合文化導覽與展覽。',
     theme: 'elegant',
@@ -68,6 +82,7 @@ export const SITE_TEMPLATES = [
   },
   {
     key: 'night',
+    cat: 'night',
     label: '夜色霓虹',
     desc: '深色主題 + 大橫幅，適合夜間市集與音樂活動。',
     theme: 'dark',
@@ -82,6 +97,7 @@ export const SITE_TEMPLATES = [
   },
   {
     key: 'trail',
+    cat: 'outdoor',
     label: '山林步道',
     desc: '自然綠意主題，路線資訊與安全提醒排前面，適合登山健行。',
     theme: 'nature',
@@ -97,6 +113,7 @@ export const SITE_TEMPLATES = [
   },
   {
     key: 'festive',
+    cat: 'shopping',
     label: '節慶購物',
     desc: '暖色調 + 促銷橫幅，適合商場檔期與市集活動。',
     theme: 'warm',
@@ -110,11 +127,58 @@ export const SITE_TEMPLATES = [
     ],
     pages: [],
   },
+  {
+    key: 'minimal',
+    cat: 'brand',
+    label: '簡約一頁式',
+    desc: '大量留白、置中排版，只留最重要的資訊。',
+    theme: 'default',
+    hideHero: '',
+    home: [
+      { type: 'Spacer', props: { id: 't-mi-1', size: 'm' } },
+      { type: 'Heading', props: { id: 't-mi-2', text: '（編輯）一句話介紹活動', level: 'h2', align: 'center' } },
+      { type: 'Paragraph', props: { id: 't-mi-3', text: '用一小段文字說明玩法。', align: 'center', style: { maxWidth: 'tight' } } },
+      { type: 'Button', props: { id: 't-mi-4', label: '立即參加', href: '#join', variant: 'solid', align: 'center', color: '' } },
+      { type: 'Spacer', props: { id: 't-mi-5', size: 'm' } },
+      { type: 'TaskStops', props: { id: 't-mi-6', title: '' } },
+    ],
+    pages: [],
+  },
+  {
+    key: 'portal',
+    cat: 'city',
+    label: '資訊門戶',
+    desc: '兩欄資訊密集排版 + 多頁架構，適合大型活動官網。',
+    theme: 'ocean',
+    hideHero: '',
+    home: [
+      { type: 'StatsBand', props: { id: 't-po-1' } },
+      { type: 'Columns', props: { id: 't-po-2', ratio: '2-1',
+        left: [
+          { type: 'TaskStops', props: { id: 't-po-3', title: '任務停靠點' } },
+          { type: 'Places', props: { id: 't-po-4', title: '景點導覽', items: [{ name: '（編輯）地標', description: '簡介。' }] } },
+        ],
+        right: [
+          { type: 'InfoList', props: { id: 't-po-5', title: '活動資訊', items: [{ label: '日期', value: '（編輯）' }, { label: '費用', value: '免費' }] } },
+          { type: 'Notice', props: { id: 't-po-6', title: '注意事項', tone: 'info', items: [{ text: '（編輯）提醒內容' }] } },
+          { type: 'Button', props: { id: 't-po-7', label: '常見問題', href: 'faq', variant: 'outline', align: 'left', color: '' } },
+        ] } },
+    ],
+    pages: [
+      { slug: 'faq', title: '常見問題', nav: true, data: { root: { props: {} }, content: [
+        { type: 'Heading', props: { id: 't-po-p1', text: '常見問題', level: 'h2', align: 'left' } },
+        { type: 'Notice', props: { id: 't-po-p2', title: '需要付費嗎？', tone: 'info', items: [{ text: '（編輯）完全免費。' }] } },
+        { type: 'Notice', props: { id: 't-po-p3', title: '需要下載 App 嗎？', tone: 'info', items: [{ text: '（編輯）不用 — LINE 直接玩。' }] } },
+      ], zones: {} } },
+    ],
+  },
 ];
 
 /** Builds the new home doc + pages from a template, preserving the event's
- * own settings (title/description/hero/reward, custom menu & CSS stay). */
-export function applyTemplate(tpl, currentRootProps) {
+ * own settings (title/description/hero/reward, custom menu & CSS stay).
+ * `themeOverride` picks a different color scheme for the same layout —
+ * the layout × theme matrix that turns 8 layouts into a full theme store. */
+export function applyTemplate(tpl, currentRootProps, themeOverride) {
   const hero = currentRootProps?.heroImage || '';
   const content = JSON.parse(JSON.stringify(tpl.home)).map((b) => {
     if (b.type === 'Banner' && b.props.image === '__HERO__') b.props.image = hero;
@@ -123,7 +187,7 @@ export function applyTemplate(tpl, currentRootProps) {
   const home = {
     root: { props: {
       ...currentRootProps,
-      theme: tpl.theme,
+      theme: themeOverride || tpl.theme,
       themeCustom: {},
       hideHero: tpl.hideHero || '',
     } },
