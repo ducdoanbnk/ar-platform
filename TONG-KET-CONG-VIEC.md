@@ -154,6 +154,8 @@ docs đã cập nhật; SSH alias `github-work` giữ nguyên).
 
 | `f8eda55` | **Kho 範本 + theme customizer** (mô hình WordPress): 6 site template trọn gói (theme + layout + trang con, JSON trong `lib/site-templates.js` — thumbnail = render thật thu nhỏ, 套用 giữ dữ liệu sự kiện, marker `__HERO__` ăn ảnh bìa khách); 自訂主題 chỉnh từng token (màu/font/bo góc/overlay, seed từ preset) lưu `themeCustom` root props, `themeStyles(key, custom)` |
 
+| `d93b47a` | **佈景主題商店**: store full-screen 8 版型 × 7 配色 (56 biến thể) — lọc 6 danh mục, chấm配色 trên card, preview lớn cuộn được, `applyTemplate(tpl, rootProps, themeOverride)` |
+
 Điểm kiến trúc cần nhớ:
 - **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
   site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
