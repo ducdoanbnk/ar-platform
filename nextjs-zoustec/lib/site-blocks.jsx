@@ -13,15 +13,34 @@
 
 import { Icon } from '../components/Icon';
 
-/* ── Theme presets ─────────────────────────────────────────────────────
- * A theme is a set of CSS-var overrides scoped to the Puck content (root
- * render) plus page-level styles (EventSite wrapper: background + font).
- * Blocks keep reading the same tokens, so every theme restyles every block
- * — the "thỏa trí custom" layer that stays consistent per design system. */
+/* ── Theme registry ────────────────────────────────────────────────────
+ * A theme is a data object (WordPress-style "theme", no code): design
+ * tokens as CSS-var overrides + page styles + hero treatment + typography.
+ * Blocks and the structural chrome (hero, stats, buttons, cards) all read
+ * these tokens, so switching themes restyles the ENTIRE site while brand
+ * colors (tenant palette) stay theirs. Being pure JSON, themes can later
+ * move to the DB → per-tenant custom themes / marketplace.
+ *
+ * Token contract consumed by blocks & chrome:
+ *   --site-radius        card corner radius
+ *   --site-btn-radius    button corner radius
+ *   --site-heading-weight heading font weight
+ *   --surface-sunken / --border-subtle / --border-default   card skin
+ *   --text-strong / --text-body / --text-subtle             typography
+ *   --site-card-bg       solid card background (stats/tasks on home)
+ * plus: page {background,color}, font (body+heading stack),
+ * hero {overlay: css-gradient over hero image, tint: extra scrim color}
+ */
 export const THEMES = {
-  default: { label: '清爽（預設）', vars: {}, page: {} },
+  default: {
+    label: '清爽（預設）',
+    swatch: ['#FFFFFF', '#EEF2F6', '#0E7490'],
+    vars: { '--site-card-bg': '#fff' },
+    page: {},
+  },
   dark: {
     label: '深色',
+    swatch: ['#0B2935', '#12384A', '#6FCDE8'],
     vars: {
       '--surface-sunken': 'rgba(255,255,255,.07)',
       '--border-subtle': 'rgba(255,255,255,.15)',
@@ -30,11 +49,14 @@ export const THEMES = {
       '--text-body': '#C9D6DD',
       '--text-subtle': '#8FA6B0',
       '--status-warning-bg': 'rgba(245,158,11,.16)',
+      '--site-card-bg': 'rgba(255,255,255,.06)',
     },
     page: { background: '#0B2935', color: '#C9D6DD' },
+    hero: { overlay: 'linear-gradient(rgba(4,18,24,.55), rgba(4,18,24,.78))' },
   },
   warm: {
     label: '暖陽',
+    swatch: ['#FFFBF4', '#FBF2E3', '#C2410C'],
     vars: {
       '--surface-sunken': '#FBF2E3',
       '--border-subtle': '#F0E0C5',
@@ -42,11 +64,15 @@ export const THEMES = {
       '--text-strong': '#43301A',
       '--text-body': '#6B5638',
       '--text-subtle': '#9C8767',
+      '--site-card-bg': '#FFFDF8',
+      '--site-radius': '16px',
     },
     page: { background: '#FFFBF4' },
+    hero: { overlay: 'linear-gradient(rgba(67,32,10,.45), rgba(67,32,10,.62))' },
   },
   nature: {
     label: '森林',
+    swatch: ['#F7FBF6', '#EEF6EC', '#166534'],
     vars: {
       '--surface-sunken': '#EEF6EC',
       '--border-subtle': '#DCEBD6',
@@ -54,11 +80,16 @@ export const THEMES = {
       '--text-strong': '#1E3A26',
       '--text-body': '#3F5C48',
       '--text-subtle': '#7C967F',
+      '--site-card-bg': '#FDFFFC',
+      '--site-radius': '18px',
+      '--site-btn-radius': '14px',
     },
     page: { background: '#F7FBF6' },
+    hero: { overlay: 'linear-gradient(rgba(13,36,20,.45), rgba(13,36,20,.66))' },
   },
   elegant: {
     label: '典雅（襯線體）',
+    swatch: ['#FFFEFB', '#F1EEE7', '#2B2620'],
     vars: {
       '--surface-sunken': '#FAF9F7',
       '--border-subtle': '#E8E4DC',
@@ -66,16 +97,59 @@ export const THEMES = {
       '--text-strong': '#2B2620',
       '--text-body': '#575044',
       '--text-subtle': '#948B7B',
+      '--site-card-bg': '#FFFFFE',
       '--site-radius': '4px',
+      '--site-btn-radius': '4px',
+      '--site-heading-weight': '600',
     },
     page: { background: '#FFFEFB' },
     font: "Georgia, 'Noto Serif TC', 'Times New Roman', serif",
+    hero: { overlay: 'linear-gradient(rgba(24,20,14,.5), rgba(24,20,14,.68))' },
+  },
+  ocean: {
+    label: '海洋',
+    swatch: ['#F4FAFD', '#E3F2FA', '#0369A1'],
+    vars: {
+      '--surface-sunken': '#E9F4FA',
+      '--border-subtle': '#D5E9F4',
+      '--border-default': '#B1D6E8',
+      '--text-strong': '#0C3B54',
+      '--text-body': '#33607A',
+      '--text-subtle': '#6E97AC',
+      '--site-card-bg': '#FCFEFF',
+      '--site-radius': '20px',
+      '--site-btn-radius': '9999px',
+    },
+    page: { background: '#F4FAFD' },
+    hero: { overlay: 'linear-gradient(rgba(4,36,54,.4), rgba(4,36,54,.62))' },
+  },
+  bold: {
+    label: '活力',
+    swatch: ['#FFFFFF', '#F4F4F5', '#18181B'],
+    vars: {
+      '--surface-sunken': '#F4F4F5',
+      '--border-subtle': '#E4E4E7',
+      '--border-default': '#111113',
+      '--text-strong': '#111113',
+      '--text-body': '#3F3F46',
+      '--text-subtle': '#7B7B85',
+      '--site-card-bg': '#fff',
+      '--site-radius': '2px',
+      '--site-btn-radius': '2px',
+      '--site-heading-weight': '900',
+    },
+    page: { background: '#fff' },
+    hero: { overlay: 'linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.7))' },
   },
 };
 
 export function themeStyles(themeKey) {
   const t = THEMES[themeKey] || THEMES.default;
-  return { vars: { ...t.vars, ...(t.font ? { fontFamily: t.font } : {}) }, page: { ...t.page, ...(t.font ? { fontFamily: t.font } : {}) } };
+  return {
+    vars: { ...t.vars, ...(t.font ? { fontFamily: t.font } : {}) },
+    page: { ...t.page, ...(t.font ? { fontFamily: t.font } : {}) },
+    hero: t.hero || null,
+  };
 }
 
 const card = { background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--site-radius, 14px)', padding: '14px' };
@@ -88,7 +162,7 @@ const ALIGN = { left: 'flex-start', center: 'center', right: 'flex-end' };
 function HeadingBlock({ text, level, align }) {
   const Tag = level === 'h3' ? 'h3' : 'h2';
   const size = level === 'h3' ? 'clamp(15px, 1.8vw, 17px)' : 'clamp(18px, 2.2vw, 22px)';
-  return <Tag style={{ margin: 0, fontSize: size, fontWeight: 800, color: 'var(--text-strong)', textAlign: align || 'left' }}>{text}</Tag>;
+  return <Tag style={{ margin: 0, fontSize: size, fontWeight: 'var(--site-heading-weight, 800)', color: 'var(--text-strong)', textAlign: align || 'left' }}>{text}</Tag>;
 }
 
 function ParagraphBlock({ text, align }) {
@@ -171,7 +245,7 @@ function ButtonBlock({ label, href, variant, align }) {
   return (
     <div style={{ display: 'flex', justifyContent: ALIGN[align] || 'flex-start' }}>
       <a href={href || '#'} style={{
-        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '9999px',
+        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: 'var(--site-btn-radius, 9999px)',
         background: solid ? 'var(--brand, var(--primary-600))' : 'transparent',
         color: solid ? '#fff' : 'var(--brand, var(--primary-600))',
         border: solid ? 'none' : '1.5px solid var(--brand, var(--primary-600))',
@@ -193,6 +267,59 @@ function ColumnsBlock({ ratio, left: Left, right: Right }) {
   );
 }
 
+/* ── Smart blocks — bound to LIVE event data via Puck metadata ─────────
+ * The editor and the public renderer both pass metadata={{event, tasks}},
+ * so these blocks always show the real numbers/tasks and the admin decides
+ * WHERE (or whether) they appear. */
+
+const METHOD_ICON = { qr: 'qr-code', gps: 'map-pin', hybrid: 'scan-line' };
+const METHOD_LABEL = { qr: 'QR + AR', gps: 'GPS + AR', hybrid: '混合驗證' };
+
+const solidCard = { background: 'var(--site-card-bg, #fff)', borderRadius: 'var(--site-radius, 14px)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' };
+
+function StatsBandBlock({ puck }) {
+  const ev = puck?.metadata?.event || {};
+  const tasks = puck?.metadata?.tasks || [];
+  const cell = (icon, big, small) => (
+    <div style={{ ...solidCard, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '13px', flex: '1 1 160px', minWidth: 0 }}>
+      <span style={{ width: '40px', height: '40px', borderRadius: 'var(--site-radius, 11px)', background: 'var(--surface-sunken)', color: 'var(--brand, var(--primary-600))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', flex: '0 0 auto' }}><Icon name={icon} /></span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: '21px', fontWeight: 'var(--site-heading-weight, 800)', color: 'var(--text-strong)', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{big}</div>
+        <div style={{ fontSize: '12px', color: 'var(--text-subtle)', fontWeight: 600 }}>{small}</div>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ display: 'flex', gap: '13px', flexWrap: 'wrap' }}>
+      {cell('map-pin', tasks.length, '任務停靠點')}
+      {cell('award', ev.reward_threshold ?? '—', '集章門檻')}
+      {cell('gift', ev.reward_name || '—', '獎勵')}
+    </div>
+  );
+}
+
+function TaskStopsBlock({ title, puck }) {
+  const tasks = puck?.metadata?.tasks || [];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+      {title && <HeadingBlock text={title} level="h2" align="left" />}
+      {tasks.length === 0 && <div style={{ ...card, textAlign: 'center', color: 'var(--text-subtle)', fontSize: '12.5px', padding: '22px' }}>（尚無任務 — 於網站產生器左側新增）</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+        {tasks.map((t, i) => (
+          <div key={i} style={{ ...solidCard, display: 'flex', alignItems: 'center', gap: '13px', padding: '14px' }}>
+            <span style={{ width: '42px', height: '42px', borderRadius: 'var(--site-radius, 11px)', background: 'var(--surface-sunken)', color: 'var(--brand, var(--primary-600))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', flex: '0 0 auto' }}><Icon name={METHOD_ICON[t.verification_type] || 'map-pin'} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-strong)' }}>{t.name}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-subtle)' }}>{METHOD_LABEL[t.verification_type] || ''}{t.radius_m ? ` · 範圍 ${t.radius_m}m` : ''}</div>
+            </div>
+            <span style={{ fontSize: '15px', color: 'var(--text-subtle)', display: 'inline-flex', lineHeight: 0 }}><Icon name="chevron-right" /></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SpacerBlock({ size }) {
   const h = { s: 12, m: 28, l: 56 }[size] ?? 28;
   return <div style={{ height: `${h}px` }} />;
@@ -206,11 +333,24 @@ function DividerBlock() {
 
 export const siteConfig = {
   categories: {
+    live: { title: '活動資料（自動同步）', components: ['StatsBand', 'TaskStops'] },
     content: { title: '內容', components: ['Heading', 'Paragraph', 'TextCard', 'Notice', 'InfoList', 'Places'] },
     media: { title: '媒體與按鈕', components: ['Image', 'Button'] },
     layout: { title: '版面', components: ['Columns', 'Spacer', 'Divider'] },
   },
   components: {
+    StatsBand: {
+      label: '數據看板（任務／門檻／獎勵）',
+      fields: {},
+      defaultProps: {},
+      render: StatsBandBlock,
+    },
+    TaskStops: {
+      label: '任務停靠點（自動同步）',
+      fields: { title: { type: 'text', label: '標題（留空隱藏）' } },
+      defaultProps: { title: '任務停靠點' },
+      render: TaskStopsBlock,
+    },
     Heading: {
       label: '標題',
       fields: {
@@ -325,6 +465,24 @@ export const siteConfig = {
 
 /* ── Migration: legacy config.sections → Puck data ────────────────────── */
 
+/** The smart blocks every migrated/upgraded home page starts with — the
+ * structural stats + task list the legacy layout always rendered. */
+export function defaultLiveBlocks() {
+  return [
+    { type: 'StatsBand', props: { id: 'live-stats' } },
+    { type: 'TaskStops', props: { id: 'live-tasks', title: '任務停靠點' } },
+  ];
+}
+
+/** v1 Puck docs predate smart blocks (stats/tasks were structural chrome).
+ * Prepend them once so upgrading to the v2 layout loses nothing. */
+export function upgradePuckDoc(doc) {
+  const content = doc?.content || [];
+  const has = (t) => content.some((c) => c.type === t);
+  const prepend = defaultLiveBlocks().filter((b) => !has(b.type));
+  return { ...doc, content: [...prepend, ...content] };
+}
+
 /** Converts the old per-type sections (lib/event-sections.js) into a Puck
  * document so existing events open in the drag-drop editor with their
  * content intact. Hidden sections are dropped (the new editor deletes
@@ -344,5 +502,5 @@ export function sectionsToPuckData(sections) {
     // text (and any unknown legacy type with paragraphs)
     return { type: 'TextCard', props: { id, title: s.title || '', text: (s.paragraphs || []).join('\n') } };
   });
-  return { root: { props: {} }, content, zones: {} };
+  return { root: { props: { theme: 'default' } }, content: [...defaultLiveBlocks(), ...content], zones: {} };
 }

@@ -22,8 +22,8 @@ import { Puck, createUsePuck } from '@measured/puck';
 import '@measured/puck/puck.css';
 import { Icon } from '../../../../components/Icon';
 import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
-import { editorConfig } from '../../../../lib/puck-editor-config';
-import { sectionsToPuckData } from '../../../../lib/site-blocks';
+import { editorConfig, editorSubPageConfig } from '../../../../lib/puck-editor-config';
+import { sectionsToPuckData, upgradePuckDoc } from '../../../../lib/site-blocks';
 import { DEFAULT_SECTIONS } from '../../../../lib/event-sections';
 
 const TENANT = process.env.NEXT_PUBLIC_TENANT_SLUG || 'taipei';
@@ -64,6 +64,7 @@ function HeaderActions({ onSave, busy, flash, publicUrl, backUrl }) {
 export default function Page() {
   const router = useRouter();
   const [event, setEvent] = useState(null);
+  const [tasks, setTasks] = useState([]); // metadata for the live smart blocks
   const [homeDoc, setHomeDoc] = useState(null); // initial home document
   const [pages, setPages] = useState([]); // [{slug, title, nav, data}]
   const [cur, setCur] = useState(HOME); // HOME or a page slug
@@ -84,9 +85,25 @@ export default function Page() {
         const params = new URLSearchParams(window.location.search);
         const ev = events.find((e) => e.id === params.get('event')) || events[0];
         setEvent(ev);
+        setTasks(await adminApi(`/api/admin/events/${ev.id}/tasks`));
         // Existing Puck document wins (even if emptied on purpose); otherwise
-        // migrate the legacy sections so old events open with content intact.
-        setHomeDoc(ev.config?.puck || sectionsToPuckData(ev.config?.sections?.length ? ev.config.sections : (DEFAULT_SECTIONS[ev.event_type] || [])));
+        // migrate the legacy sections. v1 docs (pre smart blocks) get the
+        // live stats/tasks blocks prepended so the v2 layout loses nothing.
+        let home = ev.config?.puck
+          ? (ev.config?.puckVersion >= 2 ? ev.config.puck : upgradePuckDoc(ev.config.puck))
+          : sectionsToPuckData(ev.config?.sections?.length ? ev.config.sections : (DEFAULT_SECTIONS[ev.event_type] || []));
+        // Event basics live on the root panel (活動設定) — the event record
+        // stays the source of truth, so re-seed them on every open.
+        home = { ...home, root: { ...(home.root || {}), props: {
+          ...(home.root?.props || {}),
+          title: ev.name,
+          description: ev.description || '',
+          heroImage: ev.config?.heroImage || '',
+          rewardName: ev.reward_name || '',
+          rewardThreshold: ev.reward_threshold || 1,
+          theme: home.root?.props?.theme || 'default',
+        } } };
+        setHomeDoc(home);
         setPages(ev.config?.pages || []);
         try {
           const b = await adminApi('/api/admin/branding');
@@ -132,9 +149,20 @@ export default function Page() {
       draftsRef.current[cur] = currentDoc;
       const home = draftsRef.current[HOME] || homeDoc;
       const outPages = pages.map((p) => ({ ...p, data: draftsRef.current[p.slug] || p.data }));
+      // Event basics come off the root panel; clamp the reward threshold to
+      // the task count (a higher one can never be reached).
+      const rp = home.root?.props || {};
+      let threshold = Number(rp.rewardThreshold) || 1;
+      if (tasks.length > 0 && threshold > tasks.length) threshold = tasks.length;
       const updated = await adminApi(`/api/admin/events/${event.id}`, {
         method: 'PATCH',
-        body: { config: { ...(event.config || {}), puck: home, pages: outPages } },
+        body: {
+          name: (rp.title || '').trim() || event.name,
+          description: rp.description || '',
+          reward_name: rp.rewardName || '',
+          reward_threshold: threshold,
+          config: { ...(event.config || {}), heroImage: rp.heroImage || undefined, puck: home, pages: outPages, puckVersion: 2 },
+        },
       });
       setEvent(updated);
       setHomeDoc(home);
@@ -197,7 +225,7 @@ export default function Page() {
         )}
 
         <div style={{ marginTop: 'auto', fontSize: '10.5px', color: 'var(--text-subtle)', lineHeight: 1.6, padding: '4px' }}>
-          佈景主題：點畫布空白處 → 右側「佈景主題」，套用整個網站（以首頁設定為準）。
+          活動設定（標題／封面圖／獎勵／佈景主題）：在「首頁」點畫布空白處 → 右側面板。主題套用整個網站。
         </div>
       </aside>
 
@@ -205,9 +233,10 @@ export default function Page() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <Puck
           key={cur}
-          config={editorConfig}
+          config={cur === HOME ? editorConfig : editorSubPageConfig}
           data={docFor(cur)}
           onChange={(d) => { draftsRef.current[cur] = d; }}
+          metadata={{ event, tasks }}
           iframe={{ enabled: false }}
           headerTitle={`${event.name} — ${curPage ? curPage.title : '首頁'}`}
           overrides={{

@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Icon } from '../../../components/Icon';
 import AdminShell from '../../../components/admin/AdminShell';
-import { adminApi, adminDownload, adminUpload, AuthRequired, loginUrl } from '../../../lib/admin-client';
+import { adminApi, adminDownload, AuthRequired, loginUrl } from '../../../lib/admin-client';
 import EventSections from '../../../components/event/EventSections';
-import { DEFAULT_SECTIONS, sectionBodyToText, textToSectionBody, SECTION_TYPE_META } from '../../../lib/event-sections';
+import { DEFAULT_SECTIONS } from '../../../lib/event-sections';
 
 const TYPE_META = {
   city: { icon: 'building-2', label: '城市探索', template: 'Urban Explorer' },
@@ -90,35 +90,6 @@ export default function Page() {
   }
 
   function note(msg) { setFlash(msg); setTimeout(() => setFlash(''), 2500); }
-
-  async function uploadHero(file) {
-    if (!file || busy) return;
-    setBusy('hero'); setError('');
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const out = await adminUpload('/api/admin/media', fd);
-      setForm({ ...form, heroImage: out.url });
-      note('封面已上傳 — 按「儲存」生效');
-    } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); }
-  }
-
-  async function saveEvent() {
-    if (!event || busy) return;
-    setBusy('save'); setError('');
-    try {
-      // Clamp the reward threshold to the task count — a threshold above it can
-      // never be reached (completing every task still unlocks nothing).
-      let threshold = Number(form.reward_threshold) || 1;
-      if (tasks.length > 0 && threshold > tasks.length) threshold = tasks.length;
-      const updated = await adminApi(`/api/admin/events/${event.id}`, {
-        method: 'PATCH',
-        body: { name: form.name, description: form.description, reward_name: form.reward_name, reward_threshold: threshold, config: { ...(event.config || {}), sections: form.sections, heroImage: form.heroImage || undefined } },
-      });
-      if (threshold !== Number(form.reward_threshold)) setForm((f) => ({ ...f, reward_threshold: threshold }));
-      setEvent(updated); note('已儲存 ✓');
-    } catch (e) { if (!guard(e)) setError(e.message); } finally { setBusy(''); }
-  }
 
   async function addTask() {
     if (!event || !newTask.name.trim() || busy) return;
@@ -259,7 +230,6 @@ export default function Page() {
     <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'10px'}}>
       {flash && <span style={{fontSize:'12.5px', fontWeight:'700', color:'var(--success-600)'}}>{flash}</span>}
       {event && <Link href={`/admin/builder/design?event=${event.id}`} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 13px', borderRadius:'8px', border:'1px solid var(--primary-200)', background:'var(--primary-50)', color:'var(--primary-700)', fontSize:'13px', fontWeight:'700', textDecoration:'none'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-dashboard" /></span>拖曳設計</Link>}
-      <button onClick={saveEvent} disabled={busy === 'save'} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 13px', borderRadius:'8px', border:'1px solid var(--border-default)', background:'#fff', color:'var(--text-body)', fontSize:'13px', fontWeight:'600', cursor:'pointer'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="save" /></span>{busy === 'save' ? '儲存中…' : '儲存'}</button>
       <button onClick={exportBundle} disabled={busy === 'export'} style={{display:'flex', alignItems:'center', gap:'7px', height:'36px', padding:'0 15px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'13px', fontWeight:'600', border:'none', cursor:'pointer'}}><span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name="download" /></span>{busy === 'export' ? '匯出中…' : '匯出範本'}</button>
     </div>
   </div>
@@ -350,8 +320,8 @@ export default function Page() {
 
     {/* Properties panel — live edit */}
     <aside className="editor-aside" style={{width:'340px', flex:'0 0 auto', background:'#fff', borderLeft:'1px solid var(--border-subtle)', padding:'18px 16px'}}>
-      <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', marginBottom:'4px'}}>{selectedTask ? '任務設定' : '活動內容'}</div>
-      <div style={{fontSize:'11.5px', color:'var(--text-muted)', marginBottom:'16px'}}>{selectedTask ? `編輯「${selectedTask.name}」— 每個任務可獨立設定` : '編輯後按上方「儲存」'}</div>
+      <div style={{fontSize:'13px', fontWeight:'800', color:'var(--text-strong)', marginBottom:'4px'}}>{selectedTask ? '任務設定' : '活動'}</div>
+      <div style={{fontSize:'11.5px', color:'var(--text-muted)', marginBottom:'16px'}}>{selectedTask ? `編輯「${selectedTask.name}」— 每個任務可獨立設定` : '任務與 QR 在此管理；內容與設計在拖曳設計'}</div>
       {error && <div style={{padding:'10px', borderRadius:'8px', background:'var(--status-danger-bg)', color:'var(--status-danger-fg)', fontSize:'12px', fontWeight:'600', marginBottom:'12px'}}>{error}</div>}
       {selectedTask && taskForm ? (<>
         <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>任務名稱</label>
@@ -413,66 +383,31 @@ export default function Page() {
 
         <button onClick={saveTask} disabled={busy === 'savetask'} style={{width:'100%', height:'44px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', fontSize:'14px', fontWeight:'700', border:'none', cursor:'pointer', opacity: busy === 'savetask' ? .6 : 1}}>{busy === 'savetask' ? '儲存中…' : '儲存任務'}</button>
         <button onClick={() => { setSelectedTask(null); setTaskForm(null); }} style={{width:'100%', marginTop:'8px', background:'none', border:'none', color:'var(--text-muted)', fontSize:'12.5px', fontWeight:'600', cursor:'pointer'}}>← 返回活動設定</button>
-      </>) : form && (<>
-        <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>標題</label>
-        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{width:'100%', height:'40px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'13px', color:'var(--text-strong)', fontWeight:'600', marginBottom:'14px', outline:'none'}} />
-        <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>活動介紹</label>
-        <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} style={{width:'100%', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'var(--text-body)', marginBottom:'14px', outline:'none', resize:'vertical', fontFamily:'inherit'}} />
-        <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>封面圖</label>
-        {form.heroImage ? (
-          <div style={{position:'relative', marginBottom:'8px'}}>
-            <img src={form.heroImage} alt="hero" style={{width:'100%', height:'110px', objectFit:'cover', borderRadius:'10px', border:'1px solid var(--border-subtle)'}} />
-            <button onClick={() => setForm({ ...form, heroImage: '' })} title="移除" style={{position:'absolute', top:'6px', right:'6px', width:'26px', height:'26px', borderRadius:'9999px', background:'rgba(11,41,53,.72)', color:'#fff', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="x" /></span></button>
+      </>) : (<>
+        {/* Event content editing is UNIFIED in the drag-drop designer (活動
+            設定 root panel there owns title/description/hero/reward/theme) —
+            this screen keeps tasks + QR only. */}
+        <div style={{padding:'16px', borderRadius:'12px', background:'var(--primary-50)', border:'1px solid var(--primary-200)', marginBottom:'14px'}}>
+          <div style={{display:'flex', alignItems:'center', gap:'9px', marginBottom:'8px'}}>
+            <span style={{width:'34px', height:'34px', borderRadius:'9px', background:'var(--primary-600)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'17px'}}><span style={{display:'inline-flex', lineHeight:'0'}}><Icon name="layout-dashboard" /></span></span>
+            <div style={{fontSize:'13.5px', fontWeight:'800', color:'var(--primary-800)'}}>網站內容與設計</div>
           </div>
-        ) : null}
-        <label style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'7px', padding:'10px', borderRadius:'9px', border:'1.5px dashed var(--border-default)', color:'var(--text-muted)', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', marginBottom:'14px'}}>
-          <span style={{fontSize:'15px', display:'inline-flex', lineHeight:'0'}}><Icon name={busy === 'hero' ? 'loader' : 'image-up'} /></span>{busy === 'hero' ? '上傳中…' : form.heroImage ? '更換封面圖' : '上傳封面圖'}
-          <input type="file" accept="image/png,image/jpeg,image/webp" style={{display:'none'}} onChange={(e) => uploadHero(e.target.files?.[0])} />
-        </label>
-
-        <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>獎勵名稱</label>
-        <input value={form.reward_name} onChange={(e) => setForm({ ...form, reward_name: e.target.value })} style={{width:'100%', height:'40px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'13px', color:'var(--text-body)', marginBottom:'14px', outline:'none'}} />
-        <label style={{fontSize:'12px', fontWeight:'600', color:'var(--text-body)', display:'block', marginBottom:'6px'}}>集章門檻（收集幾枚解鎖獎勵）</label>
-        <input type="number" min={1} max={Math.max(1, tasks.length)} value={form.reward_threshold} onChange={(e) => setForm({ ...form, reward_threshold: e.target.value })} style={{width:'100%', height:'40px', border:'1px solid var(--border-default)', borderRadius:'8px', padding:'0 12px', fontSize:'13px', color:'var(--text-body)', marginBottom: (Number(form.reward_threshold) > tasks.length && tasks.length > 0) ? '8px' : '16px', outline:'none'}} />
-        {/* A threshold above the task count can never be reached — players finish
-            every task and still unlock nothing. Warn, and clamp on save. */}
-        {Number(form.reward_threshold) > tasks.length && tasks.length > 0 && (
-          <div style={{padding:'8px 11px', borderRadius:'8px', background:'var(--status-warning-bg, #FEF3C7)', color:'var(--status-warning-fg, #92400E)', fontSize:'11px', fontWeight:'600', lineHeight:1.5, marginBottom:'16px'}}>
-            門檻（{Number(form.reward_threshold)}）高於任務數（{tasks.length}）— 玩家完成所有任務也無法解鎖獎勵。儲存時將自動調整為 {tasks.length}。
+          <div style={{fontSize:'12px', color:'var(--primary-800)', lineHeight:1.65, marginBottom:'12px'}}>
+            標題、介紹、封面圖、獎勵、佈景主題與所有版面區塊，都在拖曳設計編輯器中編輯（點畫布空白處 → 右側「活動設定」）。支援多頁面與 7 種佈景主題。
           </div>
-        )}
-        <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'12px', fontSize:'11px', fontWeight:'700', letterSpacing:'.08em', textTransform:'uppercase', color:'var(--text-subtle)', marginBottom:'10px'}}>內容區塊（依活動類型）</div>
-        {/* Once the event has a Puck document, the drag-drop designer is the
-            single source of truth — editing the legacy sections here would be
-            silently ignored by the public site. */}
-        {event?.config?.puck ? (
-          <div style={{padding:'12px', borderRadius:'10px', background:'var(--primary-50)', border:'1px solid var(--primary-200)', fontSize:'12px', color:'var(--primary-800)', lineHeight:1.6, marginBottom:'10px'}}>
-            此活動的網站內容已改用<b>拖曳設計</b>編輯 — 請由上方「拖曳設計」按鈕進入編輯，這裡的區塊設定已停用。
-          </div>
-        ) : (form.sections || []).map((sec, i) => {
-          const meta = SECTION_TYPE_META[sec.type] || SECTION_TYPE_META.text;
-          const setSec = (patch) => {
-            const next = form.sections.map((x, j) => (j === i ? { ...x, ...patch } : x));
-            setForm({ ...form, sections: next });
-          };
-          return (
-            <div key={i} style={{border:'1px solid var(--border-subtle)', borderRadius:'10px', padding:'10px', marginBottom:'10px', opacity: sec.hidden ? .55 : 1}}>
-              <div style={{display:'flex', alignItems:'center', gap:'7px', marginBottom:'7px'}}>
-                <span style={{fontSize:'13px', color:'var(--primary-600)', display:'inline-flex', lineHeight:'0'}}><Icon name={meta.icon} /></span>
-                <input value={sec.title || ''} onChange={(e) => setSec({ title: e.target.value })} style={{flex:1, minWidth:0, height:'30px', border:'1px solid var(--border-default)', borderRadius:'7px', padding:'0 9px', fontSize:'12.5px', fontWeight:'700', color:'var(--text-strong)', outline:'none'}} />
-                <span style={{fontSize:'10px', fontWeight:'700', color:'var(--text-subtle)', background:'var(--surface-sunken)', padding:'3px 7px', borderRadius:'9999px', flex:'0 0 auto'}}>{meta.label}</span>
-                <button onClick={() => setSec({ hidden: !sec.hidden })} title={sec.hidden ? '顯示' : '隱藏'} style={{border:'none', background:'none', color: sec.hidden ? 'var(--text-subtle)' : 'var(--primary-600)', fontSize:'14px', cursor:'pointer', display:'inline-flex', lineHeight:'0', padding:0}}><Icon name={sec.hidden ? 'eye-off' : 'eye'} /></button>
-              </div>
-              <textarea value={sectionBodyToText(sec)} onChange={(e) => setSec(textToSectionBody(sec, e.target.value))} rows={3} style={{width:'100%', border:'1px solid var(--border-default)', borderRadius:'7px', padding:'7px 9px', fontSize:'12px', color:'var(--text-body)', outline:'none', resize:'vertical', fontFamily:'inherit', lineHeight:1.5}} />
-              <div style={{fontSize:'10px', color:'var(--text-subtle)', marginTop:'4px'}}>{meta.hint}</div>
-            </div>
-          );
-        })}
-        {!event?.config?.puck && (
-          <Link href={`/admin/builder/design?event=${event?.id}`} style={{display:'block', padding:'11px', borderRadius:'10px', border:'1.5px dashed var(--primary-300, var(--primary-200))', color:'var(--primary-700)', fontSize:'12px', fontWeight:'600', textDecoration:'none', textAlign:'center', lineHeight:1.6, marginBottom:'10px'}}>
-            想要更自由的版面？試試新的<b>拖曳設計</b>編輯器 →<br /><span style={{fontSize:'10.5px', color:'var(--text-subtle)', fontWeight:'500'}}>現有內容會自動帶入，可自由增刪區塊、排版面</span>
+          <Link href={`/admin/builder/design?event=${event?.id}`} style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', height:'42px', borderRadius:'9999px', background:'var(--primary-600)', color:'#fff', fontSize:'13.5px', fontWeight:'700', textDecoration:'none'}}>
+            <span style={{fontSize:'16px', display:'inline-flex', lineHeight:'0'}}><Icon name="layout-dashboard" /></span>開啟拖曳設計
           </Link>
-        )}
+        </div>
+
+        <div style={{fontSize:'11px', fontWeight:'700', letterSpacing:'.08em', textTransform:'uppercase', color:'var(--text-subtle)', marginBottom:'8px'}}>活動摘要</div>
+        <div style={{display:'flex', flexDirection:'column', gap:'6px', fontSize:'12.5px', color:'var(--text-body)', marginBottom:'14px'}}>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'10px'}}><span style={{color:'var(--text-subtle)'}}>標題</span><span style={{fontWeight:'700', color:'var(--text-strong)', textAlign:'right'}}>{event?.name}</span></div>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'10px'}}><span style={{color:'var(--text-subtle)'}}>任務數</span><span style={{fontWeight:'700', color:'var(--text-strong)'}}>{tasks.length}</span></div>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'10px'}}><span style={{color:'var(--text-subtle)'}}>集章門檻</span><span style={{fontWeight:'700', color:'var(--text-strong)'}}>{event?.reward_threshold ?? '—'}</span></div>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'10px'}}><span style={{color:'var(--text-subtle)'}}>獎勵</span><span style={{fontWeight:'700', color:'var(--text-strong)', textAlign:'right'}}>{event?.reward_name || '—'}</span></div>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'10px'}}><span style={{color:'var(--text-subtle)'}}>子頁面</span><span style={{fontWeight:'700', color:'var(--text-strong)'}}>{event?.config?.pages?.length || 0}</span></div>
+        </div>
 
         <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'14px', fontSize:'11px', color:'var(--text-subtle)', lineHeight:1.8}}>
           公開網址：<a href={`/e/${TENANT}/${event?.slug}`} target="_blank" rel="noreferrer" style={{fontFamily:'var(--font-mono)', color:'var(--primary-600)', fontWeight:'700'}}>/e/{TENANT}/{event?.slug} ↗</a><br />

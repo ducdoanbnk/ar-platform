@@ -52,12 +52,17 @@ export default function EventSite({ site, linkBase }) {
   const hero = event.config?.heroImage;
   const pages = navPages(event);
   const theme = themeStyles(siteTheme(event));
+  // v2 (unified designer): stats/tasks are smart BLOCKS inside the document,
+  // the admin decides where they appear. v1/legacy keeps the structural
+  // sections so old sites don't change until re-published.
+  const v2 = (event.config?.puckVersion || 0) >= 2;
+  const heroOverlay = theme.hero?.overlay || 'linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66))';
 
   return (
-<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column', ...theme.page }}>
+<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column', ...theme.vars, ...theme.page }}>
 
   {/* ── Hero (full-bleed) ────────────────────────────────────────────── */}
-  <div style={{position:'relative', minHeight:'clamp(400px, 56vh, 580px)', background: hero ? `linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66)), url(${hero}) center/cover` : `linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', display:'flex', flexDirection:'column'}}>
+  <div style={{position:'relative', minHeight:'clamp(400px, 56vh, 580px)', background: hero ? `${heroOverlay}, url(${hero}) center/cover` : `linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', display:'flex', flexDirection:'column'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 80% 15%, rgba(255,255,255,.12), transparent 50%)'}}></div>
 
     {/* Header row */}
@@ -89,7 +94,8 @@ export default function EventSite({ site, linkBase }) {
     </div>
   </div>
 
-  {/* ── Stats band (overlaps the hero) ───────────────────────────────── */}
+  {/* ── Stats band (v1 structural only — v2 has the StatsBand block) ──── */}
+  {!v2 && (
   <div style={{...WRAP, position:'relative', zIndex:2, marginTop:'-30px'}}>
     <div className="grid-kpi" style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'14px'}}>
       <div style={{background:'#fff', borderRadius:'14px', border:'1px solid var(--border-subtle)', boxShadow:'var(--shadow-md)', padding:'18px 20px', display:'flex', alignItems:'center', gap:'14px'}}>
@@ -106,12 +112,13 @@ export default function EventSite({ site, linkBase }) {
       </div>
     </div>
   </div>
+  )}
 
   {/* ── Body ─────────────────────────────────────────────────────────── */}
   <div style={{...WRAP, flex:'1', paddingTop:'30px', paddingBottom:'40px'}}>
 
-    {/* Task stops */}
-    {tasks.length > 0 && (<>
+    {/* v1 structural task stops — v2 has the TaskStops block */}
+    {!v2 && tasks.length > 0 && (<>
       <h2 style={{margin:'0 0 14px', fontSize:'clamp(18px, 2.2vw, 22px)', fontWeight:'800', color:'var(--text-strong)'}}>任務停靠點</h2>
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:'12px', marginBottom:'30px'}}>
         {tasks.map((t, i) => (
@@ -127,10 +134,11 @@ export default function EventSite({ site, linkBase }) {
       </div>
     </>)}
 
-    {/* Content: Puck document (drag-drop designer) wins over legacy sections */}
+    {/* Content: Puck document (drag-drop designer) wins over legacy sections.
+        v2 passes live event data so the smart blocks render real numbers. */}
     {event.config?.puck?.content?.length > 0 ? (
       <div style={{marginBottom:'30px'}}>
-        <Render config={siteConfig} data={event.config.puck} />
+        <Render config={siteConfig} data={event.config.puck} metadata={{ event, tasks }} />
       </div>
     ) : event.config?.sections?.filter((x) => !x.hidden).length > 0 && (<>
       <h2 style={{margin:'0 0 14px', fontSize:'clamp(18px, 2.2vw, 22px)', fontWeight:'800', color:'var(--text-strong)'}}>活動資訊</h2>

@@ -16,7 +16,7 @@ import { navPages, siteTheme } from './EventSite';
 const WRAP = { maxWidth: '1140px', width: '100%', margin: '0 auto', padding: '0 clamp(16px, 4vw, 26px)' };
 
 export default function EventSubPage({ site, page, linkBase }) {
-  const { branding, event } = site;
+  const { branding, event, tasks } = site;
   const p = brandPalette(branding.theme_color || '#0E7490') || {};
   const base = linkBase ?? `/e/${branding.tenant_slug}`;
   const eventHref = `${base}/${event.slug}`;
@@ -30,7 +30,7 @@ export default function EventSubPage({ site, page, linkBase }) {
   const data = { ...page.data, root: { ...(page.data?.root || {}), props: { ...(page.data?.root?.props || {}), theme: siteTheme(event) } } };
 
   return (
-<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, background: 'var(--surface-app)', display: 'flex', flexDirection: 'column', ...theme.page }}>
+<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, background: 'var(--surface-app)', display: 'flex', flexDirection: 'column', ...theme.vars, ...theme.page }}>
 
   {/* ── Compact brand header + nav ───────────────────────────────────── */}
   <div style={{background: `linear-gradient(135deg, ${p.heroA}, ${p.heroB})`, color: '#fff'}}>
@@ -55,7 +55,7 @@ export default function EventSubPage({ site, page, linkBase }) {
 
   {/* ── Page content (Puck document) ─────────────────────────────────── */}
   <div style={{...WRAP, flex:'1', paddingTop:'26px', paddingBottom:'40px'}}>
-    <Render config={siteConfig} data={data} />
+    <Render config={siteConfig} data={data} metadata={{ event, tasks }} />
   </div>
 
   {/* ── Footer ───────────────────────────────────────────────────────── */}

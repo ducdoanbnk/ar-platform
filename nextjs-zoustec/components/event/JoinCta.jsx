@@ -13,9 +13,9 @@ import { Icon } from '../Icon';
 const MOBILE_UA = /iphone|ipad|ipod|android|mobile/i;
 
 const VARIANTS = {
-  primary: { display:'inline-flex', alignItems:'center', gap:'8px', padding:'13px 24px', borderRadius:'9999px', background:'#fff', color:'var(--brand-dark)', fontSize:'15px', fontWeight:'800', border:'none', cursor:'pointer' },
-  ghost: { display:'inline-flex', alignItems:'center', gap:'8px', padding:'13px 20px', borderRadius:'9999px', background:'rgba(255,255,255,.12)', color:'#fff', fontSize:'14px', fontWeight:'600', border:'1px solid rgba(255,255,255,.25)', cursor:'pointer' },
-  bar: { display:'flex', alignItems:'center', justifyContent:'center', gap:'9px', width:'100%', height:'54px', borderRadius:'9999px', background:'var(--brand)', color:'#fff', fontSize:'16px', fontWeight:'800', border:'none', cursor:'pointer' },
+  primary: { display:'inline-flex', alignItems:'center', gap:'8px', padding:'13px 24px', borderRadius:'var(--site-btn-radius, 9999px)', background:'#fff', color:'var(--brand-dark)', fontSize:'15px', fontWeight:'800', border:'none', cursor:'pointer' },
+  ghost: { display:'inline-flex', alignItems:'center', gap:'8px', padding:'13px 20px', borderRadius:'var(--site-btn-radius, 9999px)', background:'rgba(255,255,255,.12)', color:'#fff', fontSize:'14px', fontWeight:'600', border:'1px solid rgba(255,255,255,.25)', cursor:'pointer' },
+  bar: { display:'flex', alignItems:'center', justifyContent:'center', gap:'9px', width:'100%', height:'54px', borderRadius:'var(--site-btn-radius, 9999px)', background:'var(--brand)', color:'#fff', fontSize:'16px', fontWeight:'800', border:'none', cursor:'pointer' },
 };
 
 export default function JoinCta({ href, label, icon, variant = 'primary' }) {
