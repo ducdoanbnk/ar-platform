@@ -152,6 +152,8 @@ docs đã cập nhật; SSH alias `github-work` giữ nguyên).
 
 | `2e18bb8` | **Custom mức Elementor**: tab 樣式 trên MỌI block (căn lề, nội/ngoại距, nền màu tự chọn — color picker, màu chữ, bo góc, bóng, độ rộng, CSS class); block 橫幅 Banner tự do + root option 隱藏預設 Hero; 網站選單 chỉnh tay (link trang con/URL ngoài, trống = auto); 全站自訂 CSS kiểu WordPress Additional CSS (inject cả canvas lẫn public, escape `</`). Marker `__color`/`__image` trong site-blocks → editor walker thay widget |
 
+| `f8eda55` | **Kho 範本 + theme customizer** (mô hình WordPress): 6 site template trọn gói (theme + layout + trang con, JSON trong `lib/site-templates.js` — thumbnail = render thật thu nhỏ, 套用 giữ dữ liệu sự kiện, marker `__HERO__` ăn ảnh bìa khách); 自訂主題 chỉnh từng token (màu/font/bo góc/overlay, seed từ preset) lưu `themeCustom` root props, `themeStyles(key, custom)` |
+
 Điểm kiến trúc cần nhớ:
 - **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
   site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
