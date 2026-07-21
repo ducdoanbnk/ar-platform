@@ -157,6 +157,75 @@ const warnCard = { background: 'var(--status-warning-bg, #FEF3C7)', border: '1px
 const cardTitle = { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', fontWeight: 800, color: 'var(--text-strong)', marginBottom: '9px' };
 const ALIGN = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
+/* ── Universal style controls (Elementor-style 樣式 tab) ───────────────
+ * Every block gets a `style` object prop rendered as a wrapper <div>.
+ * Field markers: `__color: true` / `__image: true` on a text field tell the
+ * editor config to swap in a color picker / image-upload widget (the public
+ * renderer never reads fields, so markers cost nothing at runtime). */
+
+export function colorText(label) {
+  return { type: 'text', label, __color: true };
+}
+export function imageText(label) {
+  return { type: 'text', label, __image: true };
+}
+
+const STYLE_FIELD = {
+  type: 'object',
+  label: '樣式',
+  objectFields: {
+    align: { type: 'radio', label: '文字對齊', options: [{ label: '預設', value: '' }, { label: '左', value: 'left' }, { label: '中', value: 'center' }, { label: '右', value: 'right' }] },
+    padding: { type: 'select', label: '內距', options: [{ label: '無', value: '' }, { label: '小', value: 's' }, { label: '中', value: 'm' }, { label: '大', value: 'l' }] },
+    marginY: { type: 'select', label: '上下外距', options: [{ label: '無', value: '' }, { label: '小', value: 's' }, { label: '中', value: 'm' }, { label: '大', value: 'l' }] },
+    background: { type: 'select', label: '背景', options: [{ label: '無', value: '' }, { label: '卡片色', value: 'card' }, { label: '品牌淡色', value: 'tint' }, { label: '自訂顏色', value: 'custom' }] },
+    bgColor: colorText('自訂背景色'),
+    textColor: colorText('文字顏色（留空＝主題預設）'),
+    radius: { type: 'select', label: '圓角', options: [{ label: '主題預設', value: '' }, { label: '無', value: 'none' }, { label: '小', value: 's' }, { label: '大', value: 'l' }] },
+    shadow: { type: 'select', label: '陰影', options: [{ label: '無', value: '' }, { label: '小', value: 's' }, { label: '中', value: 'm' }] },
+    maxWidth: { type: 'select', label: '寬度', options: [{ label: '全寬', value: '' }, { label: '窄（720px）', value: 'narrow' }, { label: '更窄（560px）', value: 'tight' }] },
+    className: { type: 'text', label: 'CSS class（搭配全站自訂 CSS）' },
+  },
+};
+
+const PAD = { s: '12px', m: '20px', l: '32px' };
+const MAR = { s: '8px', m: '20px', l: '36px' };
+const RAD = { none: '0', s: '8px', l: '22px' };
+const SHA = { s: 'var(--shadow-sm)', m: 'var(--shadow-lg)' };
+const BGS = { card: 'var(--surface-sunken)', tint: 'var(--primary-50)' };
+
+function boxStyle(s) {
+  if (!s) return null;
+  const out = {};
+  if (s.align) out.textAlign = s.align;
+  if (s.padding) out.padding = PAD[s.padding];
+  if (s.marginY) { out.marginTop = MAR[s.marginY]; out.marginBottom = MAR[s.marginY]; }
+  if (s.background === 'custom' && s.bgColor) out.background = s.bgColor;
+  else if (BGS[s.background]) out.background = BGS[s.background];
+  if (s.background) out.borderRadius = RAD[s.radius] ?? 'var(--site-radius, 14px)';
+  if (s.radius) out.borderRadius = RAD[s.radius] ?? 'var(--site-radius, 14px)';
+  if (s.textColor) out.color = s.textColor;
+  if (s.shadow) out.boxShadow = SHA[s.shadow];
+  if (s.maxWidth) { out.maxWidth = s.maxWidth === 'tight' ? '560px' : '720px'; out.marginLeft = 'auto'; out.marginRight = 'auto'; }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Adds the 樣式 tab + wrapper to a block config. The wrapper div only
+ * appears in the DOM when styles are set, so existing documents render
+ * byte-identical. */
+function withStyle({ fields, defaultProps, render: R, ...rest }) {
+  return {
+    ...rest,
+    fields: { ...fields, style: STYLE_FIELD },
+    defaultProps: { ...defaultProps, style: {} },
+    render: (props) => {
+      const s = boxStyle(props.style);
+      const cls = props.style?.className || undefined;
+      if (!s && !cls) return <R {...props} />;
+      return <div className={cls} style={s || undefined}><R {...props} /></div>;
+    },
+  };
+}
+
 /* ── Block renderers (plain presentational components) ────────────────── */
 
 function HeadingBlock({ text, level, align }) {
@@ -240,15 +309,16 @@ function ImageBlock({ url, alt, height, rounded }) {
   return <img src={url} alt={alt || ''} style={{ width: '100%', height: height === 'auto' ? 'auto' : height, objectFit: 'cover', borderRadius: rounded === 'none' ? 0 : '14px', display: 'block', border: '1px solid var(--border-subtle)' }} />;
 }
 
-function ButtonBlock({ label, href, variant, align }) {
+function ButtonBlock({ label, href, variant, align, color }) {
   const solid = variant !== 'outline';
+  const main = color || 'var(--brand, var(--primary-600))';
   return (
     <div style={{ display: 'flex', justifyContent: ALIGN[align] || 'flex-start' }}>
       <a href={href || '#'} style={{
         display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: 'var(--site-btn-radius, 9999px)',
-        background: solid ? 'var(--brand, var(--primary-600))' : 'transparent',
-        color: solid ? '#fff' : 'var(--brand, var(--primary-600))',
-        border: solid ? 'none' : '1.5px solid var(--brand, var(--primary-600))',
+        background: solid ? main : 'transparent',
+        color: solid ? '#fff' : main,
+        border: solid ? 'none' : `1.5px solid ${main}`,
         fontSize: '14px', fontWeight: 700, textDecoration: 'none',
       }}>{label}</a>
     </div>
@@ -263,6 +333,31 @@ function ColumnsBlock({ ratio, left: Left, right: Right }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'flex-start' }}>
       <Left style={cell(l)} />
       <Right style={cell(r)} />
+    </div>
+  );
+}
+
+/** Free-form banner/hero — the Elementor-style hero the admin fully owns
+ * (usable anywhere, incl. sub-pages; pair with 隱藏預設 Hero to replace the
+ * structural one entirely). */
+function BannerBlock({ image, height, overlay, overlayColor, title, subtitle, align, ctaLabel, ctaHref }) {
+  const H = { s: '200px', m: '320px', l: '460px', xl: '72vh' };
+  const OV = {
+    dark: 'linear-gradient(rgba(10,14,18,.45), rgba(10,14,18,.62))',
+    light: 'linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,.72))',
+    brand: 'linear-gradient(150deg, var(--brand-hero-a, #0E7490), var(--brand-hero-b, #155E75))',
+  };
+  const ov = overlay === 'custom' && overlayColor ? `linear-gradient(${overlayColor}, ${overlayColor})` : OV[overlay];
+  const bg = [ov, image ? `url(${image}) center/cover` : null].filter(Boolean).join(', ');
+  const center = align === 'center';
+  const light = overlay === 'light';
+  return (
+    <div style={{ position: 'relative', minHeight: H[height] || H.m, borderRadius: 'var(--site-radius, 14px)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: center ? 'center' : 'flex-start', textAlign: center ? 'center' : 'left', padding: 'clamp(20px, 4vw, 40px)', background: bg || OV.brand, color: light ? 'var(--text-strong, #16323E)' : '#fff' }}>
+      {title && <div style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 'var(--site-heading-weight, 800)', lineHeight: 1.12, letterSpacing: '-.02em', maxWidth: '22ch' }}>{title}</div>}
+      {subtitle && <div style={{ marginTop: '10px', fontSize: 'clamp(13px, 1.6vw, 16px)', lineHeight: 1.6, maxWidth: '58ch', opacity: .92 }}>{subtitle}</div>}
+      {ctaLabel && (
+        <a href={ctaHref || '#'} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '18px', padding: '12px 26px', borderRadius: 'var(--site-btn-radius, 9999px)', background: light ? 'var(--brand, var(--primary-600))' : '#fff', color: light ? '#fff' : 'var(--brand-dark, #134E61)', fontSize: '14px', fontWeight: 800, textDecoration: 'none' }}>{ctaLabel}</a>
+      )}
     </div>
   );
 }
@@ -335,23 +430,39 @@ export const siteConfig = {
   categories: {
     live: { title: '活動資料（自動同步）', components: ['StatsBand', 'TaskStops'] },
     content: { title: '內容', components: ['Heading', 'Paragraph', 'TextCard', 'Notice', 'InfoList', 'Places'] },
-    media: { title: '媒體與按鈕', components: ['Image', 'Button'] },
+    media: { title: '媒體與按鈕', components: ['Banner', 'Image', 'Button'] },
     layout: { title: '版面', components: ['Columns', 'Spacer', 'Divider'] },
   },
   components: {
-    StatsBand: {
+    StatsBand: withStyle({
       label: '數據看板（任務／門檻／獎勵）',
       fields: {},
       defaultProps: {},
       render: StatsBandBlock,
-    },
-    TaskStops: {
+    }),
+    TaskStops: withStyle({
       label: '任務停靠點（自動同步）',
       fields: { title: { type: 'text', label: '標題（留空隱藏）' } },
       defaultProps: { title: '任務停靠點' },
       render: TaskStopsBlock,
-    },
-    Heading: {
+    }),
+    Banner: withStyle({
+      label: '橫幅 Banner',
+      fields: {
+        image: imageText('背景圖'),
+        height: { type: 'select', label: '高度', options: [{ label: '小（200px）', value: 's' }, { label: '中（320px）', value: 'm' }, { label: '大（460px）', value: 'l' }, { label: '滿版（72vh）', value: 'xl' }] },
+        overlay: { type: 'select', label: '遮罩', options: [{ label: '深色', value: 'dark' }, { label: '淺色', value: 'light' }, { label: '品牌漸層', value: 'brand' }, { label: '自訂顏色', value: 'custom' }, { label: '無', value: 'none' }] },
+        overlayColor: colorText('自訂遮罩色（含透明度建議 rgba）'),
+        title: { type: 'text', label: '主標題' },
+        subtitle: { type: 'textarea', label: '副標題' },
+        align: { type: 'radio', label: '對齊', options: [{ label: '靠左', value: 'left' }, { label: '置中', value: 'center' }] },
+        ctaLabel: { type: 'text', label: '按鈕文字（留空隱藏）' },
+        ctaHref: { type: 'text', label: '按鈕連結' },
+      },
+      defaultProps: { image: '', height: 'm', overlay: 'dark', overlayColor: '', title: '橫幅標題', subtitle: '', align: 'left', ctaLabel: '', ctaHref: '' },
+      render: BannerBlock,
+    }),
+    Heading: withStyle({
       label: '標題',
       fields: {
         text: { type: 'text', label: '文字' },
@@ -360,8 +471,8 @@ export const siteConfig = {
       },
       defaultProps: { text: '區塊標題', level: 'h2', align: 'left' },
       render: HeadingBlock,
-    },
-    Paragraph: {
+    }),
+    Paragraph: withStyle({
       label: '段落文字',
       fields: {
         text: { type: 'textarea', label: '內容（一行一段）' },
@@ -369,8 +480,8 @@ export const siteConfig = {
       },
       defaultProps: { text: '在此輸入段落內容。', align: 'left' },
       render: ParagraphBlock,
-    },
-    TextCard: {
+    }),
+    TextCard: withStyle({
       label: '文字卡片',
       fields: {
         title: { type: 'text', label: '卡片標題' },
@@ -378,8 +489,8 @@ export const siteConfig = {
       },
       defaultProps: { title: '文化小知識', text: '在此撰寫給旅客的故事與背景。' },
       render: TextCardBlock,
-    },
-    Notice: {
+    }),
+    Notice: withStyle({
       label: '提醒事項',
       fields: {
         title: { type: 'text', label: '標題' },
@@ -388,8 +499,8 @@ export const siteConfig = {
       },
       defaultProps: { title: '注意事項', tone: 'info', items: [{ text: '第一則提醒' }] },
       render: NoticeBlock,
-    },
-    InfoList: {
+    }),
+    InfoList: withStyle({
       label: '資訊列表',
       fields: {
         title: { type: 'text', label: '標題' },
@@ -397,8 +508,8 @@ export const siteConfig = {
       },
       defaultProps: { title: '路線資訊', items: [{ label: '距離', value: '1.5 km' }] },
       render: InfoListBlock,
-    },
-    Places: {
+    }),
+    Places: withStyle({
       label: '地點清單',
       fields: {
         title: { type: 'text', label: '標題' },
@@ -406,30 +517,31 @@ export const siteConfig = {
       },
       defaultProps: { title: '景點導覽', items: [{ name: '（範例）古蹟地標', description: '介紹活動收錄的景點。' }] },
       render: PlacesBlock,
-    },
-    Image: {
+    }),
+    Image: withStyle({
       label: '圖片',
       fields: {
-        url: { type: 'text', label: '圖片網址' },
+        url: imageText('圖片'),
         alt: { type: 'text', label: '替代文字' },
         height: { type: 'select', label: '高度', options: [{ label: '自動', value: 'auto' }, { label: '180px', value: '180px' }, { label: '260px', value: '260px' }, { label: '360px', value: '360px' }] },
         rounded: { type: 'radio', label: '圓角', options: [{ label: '有', value: 'rounded' }, { label: '無', value: 'none' }] },
       },
       defaultProps: { url: '', alt: '', height: 'auto', rounded: 'rounded' },
       render: ImageBlock,
-    },
-    Button: {
+    }),
+    Button: withStyle({
       label: '按鈕',
       fields: {
         label: { type: 'text', label: '文字' },
         href: { type: 'text', label: '連結網址' },
         variant: { type: 'radio', label: '樣式', options: [{ label: '實心', value: 'solid' }, { label: '外框', value: 'outline' }] },
         align: { type: 'radio', label: '對齊', options: [{ label: '左', value: 'left' }, { label: '中', value: 'center' }, { label: '右', value: 'right' }] },
+        color: colorText('自訂按鈕色（留空＝品牌色）'),
       },
-      defaultProps: { label: '了解更多', href: '', variant: 'solid', align: 'left' },
+      defaultProps: { label: '了解更多', href: '', variant: 'solid', align: 'left', color: '' },
       render: ButtonBlock,
-    },
-    Columns: {
+    }),
+    Columns: withStyle({
       label: '兩欄版面',
       fields: {
         ratio: { type: 'radio', label: '欄寬比例', options: [{ label: '1 : 1', value: '1-1' }, { label: '1 : 2', value: '1-2' }, { label: '2 : 1', value: '2-1' }] },
@@ -438,7 +550,7 @@ export const siteConfig = {
       },
       defaultProps: { ratio: '1-1', left: [], right: [] },
       render: ColumnsBlock,
-    },
+    }),
     Spacer: {
       label: '間距',
       fields: { size: { type: 'radio', label: '大小', options: [{ label: '小', value: 's' }, { label: '中', value: 'm' }, { label: '大', value: 'l' }] } },

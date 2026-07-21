@@ -22,10 +22,37 @@ export function navPages(event) {
   return (event.config?.pages || []).filter((p) => p.nav !== false && p.data?.content?.length);
 }
 
-/** Site-wide theme key — the HOME document's root props is the source of
- * truth so every page of the event site stays consistent. */
+/** Site-wide settings live on the HOME document's root props (set in the
+ * designer's 活動設定 panel) so every page stays consistent. */
+export function siteRoot(event) {
+  return event.config?.puck?.root?.props || {};
+}
+
 export function siteTheme(event) {
-  return event.config?.puck?.root?.props?.theme || 'default';
+  return siteRoot(event).theme || 'default';
+}
+
+/** Nav items: the hand-made menu wins; otherwise auto-list the sub-pages.
+ * Menu links accept a sub-page slug or a full URL. */
+export function siteNav(event, eventHref) {
+  const menu = (siteRoot(event).menu || []).filter((m) => m?.label);
+  if (menu.length) {
+    return menu.map((m) => {
+      const link = String(m.link || '').trim();
+      if (/^https?:\/\//i.test(link)) return { label: m.label, href: link, external: true };
+      const slug = link.replace(/^\//, '');
+      return { label: m.label, href: slug ? `${eventHref}/${slug}` : eventHref, slug };
+    });
+  }
+  return navPages(event).map((p) => ({ label: p.title, href: `${eventHref}/${p.slug}`, slug: p.slug }));
+}
+
+/** Site-wide custom CSS (WordPress "Additional CSS" equivalent). CSS cannot
+ * execute script; escaping `</` keeps it from closing the style tag. */
+export function CustomCss({ event }) {
+  const css = siteRoot(event).customCss;
+  if (!css) return null;
+  return <style dangerouslySetInnerHTML={{ __html: String(css).replace(/<\//g, '<\\/') }} />;
 }
 
 const TYPE_LABEL = { city: '城市探索', hiking: '登山步道', shopping: '購物中心' };
@@ -50,18 +77,40 @@ export default function EventSite({ site, linkBase }) {
     ? `https://liff.line.me/${liffId}/experience/login?${joinQuery}`
     : `/experience/login?${joinQuery}`;
   const hero = event.config?.heroImage;
-  const pages = navPages(event);
   const theme = themeStyles(siteTheme(event));
   // v2 (unified designer): stats/tasks are smart BLOCKS inside the document,
   // the admin decides where they appear. v1/legacy keeps the structural
   // sections so old sites don't change until re-published.
   const v2 = (event.config?.puckVersion || 0) >= 2;
   const heroOverlay = theme.hero?.overlay || 'linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66))';
+  const eventHref = `${base}/${event.slug}`;
+  const nav = siteNav(event, eventHref);
+  const hideHero = v2 && siteRoot(event).hideHero === 'hide';
+
+  const navLinks = nav.map((it) => it.external
+    ? <a key={it.href} href={it.href} target="_blank" rel="noreferrer" style={{padding:'6px 12px', borderRadius:'9999px', color:'rgba(255,255,255,.92)', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background:'rgba(255,255,255,.1)'}}>{it.label}</a>
+    : <Link key={it.href} href={it.href} style={{padding:'6px 12px', borderRadius:'9999px', color:'rgba(255,255,255,.92)', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background:'rgba(255,255,255,.1)'}}>{it.label}</Link>);
 
   return (
 <div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column', ...theme.vars, ...theme.page }}>
+  <CustomCss event={event} />
 
-  {/* ── Hero (full-bleed) ────────────────────────────────────────────── */}
+  {hideHero ? (
+  /* ── Slim header (預設 Hero hidden — admin builds their own Banner) ── */
+  <div style={{background: `linear-gradient(135deg, ${p.heroA}, ${p.heroB})`, color:'#fff'}}>
+    <div style={{...WRAP, display:'flex', alignItems:'center', gap:'10px', paddingTop:'14px', paddingBottom:'14px', flexWrap:'wrap'}}>
+      {branding.logo_url
+        ? <img src={branding.logo_url} alt={branding.tenant_name} style={{width:'30px', height:'30px', borderRadius:'8px', objectFit:'cover', background:'#fff'}} />
+        : <span style={{width:'28px', height:'28px', borderRadius:'7px', background:'rgba(255,255,255,.16)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'15px'}}><Icon name="scan-line" /></span>}
+      <span style={{fontSize:'14px', fontWeight:'700'}}>{event.name}</span>
+      {nav.length > 0 && <nav style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'10px', flexWrap:'wrap'}}>{navLinks}</nav>}
+      <div style={{marginLeft:'auto'}}>
+        <JoinCta href={joinHref} label="開始旅程" icon="qr-code" variant="primary" />
+      </div>
+    </div>
+  </div>
+  ) : (
+  /* ── Hero (full-bleed) ────────────────────────────────────────────── */
   <div style={{position:'relative', minHeight:'clamp(400px, 56vh, 580px)', background: hero ? `${heroOverlay}, url(${hero}) center/cover` : `linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', display:'flex', flexDirection:'column'}}>
     <div style={{position:'absolute', inset:'0', background:'radial-gradient(circle at 80% 15%, rgba(255,255,255,.12), transparent 50%)'}}></div>
 
@@ -71,13 +120,9 @@ export default function EventSite({ site, linkBase }) {
         ? <img src={branding.logo_url} alt={branding.tenant_name} style={{width:'32px', height:'32px', borderRadius:'9px', objectFit:'cover', background:'#fff'}} />
         : <span style={{width:'30px', height:'30px', borderRadius:'8px', background:'rgba(255,255,255,.16)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'16px'}}><Icon name="scan-line" /></span>}
       <span style={{fontSize:'14px', fontWeight:'700'}}>{branding.tenant_name}</span>
-      {/* Multipage nav — sub-pages composed in the drag-drop designer */}
-      {pages.length > 0 && (
-        <nav style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'14px', flexWrap:'wrap'}}>
-          {pages.map((pg) => (
-            <Link key={pg.slug} href={`${base}/${event.slug}/${pg.slug}`} style={{padding:'6px 12px', borderRadius:'9999px', color:'rgba(255,255,255,.92)', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background:'rgba(255,255,255,.1)'}}>{pg.title}</Link>
-          ))}
-        </nav>
+      {/* Site nav — hand-made menu or auto sub-page list */}
+      {nav.length > 0 && (
+        <nav style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'14px', flexWrap:'wrap'}}>{navLinks}</nav>
       )}
       <span style={{marginLeft:'auto', display:'inline-flex', alignItems:'center', gap:'6px', fontSize:'11px', fontWeight:'600', background:'rgba(255,255,255,.14)', padding:'6px 11px', borderRadius:'9999px', backdropFilter:'blur(4px)'}}><span style={{width:'7px', height:'7px', borderRadius:'50%', background:'#28C840'}}></span>進行中</span>
     </div>
@@ -85,7 +130,7 @@ export default function EventSite({ site, linkBase }) {
     {/* Hero copy */}
     <div style={{...WRAP, position:'relative', marginTop:'auto', paddingBottom:'clamp(30px, 6vh, 54px)'}}>
       <div style={{fontSize:'12.5px', fontWeight:'700', letterSpacing:'.12em', textTransform:'uppercase', color:p.light, marginBottom:'10px'}}>{TYPE_LABEL[event.event_type] || '互動體驗'} · WebAR 集章</div>
-      <h1 style={{margin:0, fontSize:'clamp(30px, 5.5vw, 52px)', fontWeight:800, lineHeight:1.08, letterSpacing:'-.02em', color:'#fff', maxWidth:'20ch'}}>{event.name}</h1>
+      <h1 style={{margin:0, fontSize:'clamp(30px, 5.5vw, 52px)', fontWeight:'var(--site-heading-weight, 800)', lineHeight:1.08, letterSpacing:'-.02em', color:'#fff', maxWidth:'20ch'}}>{event.name}</h1>
       {event.description && <p style={{margin:'14px 0 0', fontSize:'clamp(14px, 1.6vw, 16.5px)', color:'rgba(255,255,255,.85)', lineHeight:1.65, maxWidth:'62ch'}}>{event.description}</p>}
       <div style={{display:'flex', gap:'10px', marginTop:'24px', flexWrap:'wrap'}}>
         <JoinCta href={joinHref} label="開始旅程" icon="qr-code" variant="primary" />
@@ -93,6 +138,7 @@ export default function EventSite({ site, linkBase }) {
       </div>
     </div>
   </div>
+  )}
 
   {/* ── Stats band (v1 structural only — v2 has the StatsBand block) ──── */}
   {!v2 && (

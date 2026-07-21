@@ -11,7 +11,7 @@ import { Icon } from '../Icon';
 import JoinCta from './JoinCta';
 import { brandPalette } from '../../lib/brand';
 import { siteConfig, themeStyles } from '../../lib/site-blocks';
-import { navPages, siteTheme } from './EventSite';
+import { CustomCss, siteNav, siteTheme } from './EventSite';
 
 const WRAP = { maxWidth: '1140px', width: '100%', margin: '0 auto', padding: '0 clamp(16px, 4vw, 26px)' };
 
@@ -20,7 +20,7 @@ export default function EventSubPage({ site, page, linkBase }) {
   const p = brandPalette(branding.theme_color || '#0E7490') || {};
   const base = linkBase ?? `/e/${branding.tenant_slug}`;
   const eventHref = `${base}/${event.slug}`;
-  const pages = navPages(event);
+  const nav = siteNav(event, eventHref);
   const theme = themeStyles(siteTheme(event));
   const liffId = branding.line_liff_id || process.env.NEXT_PUBLIC_LIFF_ID;
   const joinHref = liffId
@@ -31,6 +31,7 @@ export default function EventSubPage({ site, page, linkBase }) {
 
   return (
 <div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, background: 'var(--surface-app)', display: 'flex', flexDirection: 'column', ...theme.vars, ...theme.page }}>
+  <CustomCss event={event} />
 
   {/* ── Compact brand header + nav ───────────────────────────────────── */}
   <div style={{background: `linear-gradient(135deg, ${p.heroA}, ${p.heroB})`, color: '#fff'}}>
@@ -43,9 +44,9 @@ export default function EventSubPage({ site, page, linkBase }) {
       </Link>
       <nav style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'10px', flexWrap:'wrap'}}>
         <Link href={eventHref} style={{padding:'6px 12px', borderRadius:'9999px', color:'rgba(255,255,255,.92)', fontSize:'12.5px', fontWeight:'600', textDecoration:'none'}}>首頁</Link>
-        {pages.map((pg) => (
-          <Link key={pg.slug} href={`${eventHref}/${pg.slug}`} style={{padding:'6px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background: pg.slug === page.slug ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.08)'}}>{pg.title}</Link>
-        ))}
+        {nav.map((it) => it.external
+          ? <a key={it.href} href={it.href} target="_blank" rel="noreferrer" style={{padding:'6px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background:'rgba(255,255,255,.08)'}}>{it.label}</a>
+          : <Link key={it.href} href={it.href} style={{padding:'6px 12px', borderRadius:'9999px', color:'#fff', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background: it.slug === page.slug ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.08)'}}>{it.label}</Link>)}
       </nav>
       <div style={{marginLeft:'auto'}}>
         <JoinCta href={joinHref} label="開始旅程" icon="qr-code" variant="primary" />
