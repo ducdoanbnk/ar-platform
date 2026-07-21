@@ -15,7 +15,18 @@ import { Icon } from '../Icon';
 import EventSections from './EventSections';
 import JoinCta from './JoinCta';
 import { brandPalette } from '../../lib/brand';
-import { siteConfig } from '../../lib/site-blocks';
+import { siteConfig, themeStyles } from '../../lib/site-blocks';
+
+/** Sub-pages shown in the site nav (multipage: event.config.pages). */
+export function navPages(event) {
+  return (event.config?.pages || []).filter((p) => p.nav !== false && p.data?.content?.length);
+}
+
+/** Site-wide theme key — the HOME document's root props is the source of
+ * truth so every page of the event site stays consistent. */
+export function siteTheme(event) {
+  return event.config?.puck?.root?.props?.theme || 'default';
+}
 
 const TYPE_LABEL = { city: '城市探索', hiking: '登山步道', shopping: '購物中心' };
 const METHOD_ICON = { qr: 'qr-code', gps: 'map-pin', hybrid: 'scan-line' };
@@ -39,9 +50,11 @@ export default function EventSite({ site, linkBase }) {
     ? `https://liff.line.me/${liffId}/experience/login?${joinQuery}`
     : `/experience/login?${joinQuery}`;
   const hero = event.config?.heroImage;
+  const pages = navPages(event);
+  const theme = themeStyles(siteTheme(event));
 
   return (
-<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column' }}>
+<div className="page-full" style={{ '--brand': p.brand, '--brand-dark': p.dark, '--brand-light': p.light, '--brand-hero-a': p.heroA, '--brand-hero-b': p.heroB, background: 'var(--surface-app)', display:'flex', flexDirection:'column', ...theme.page }}>
 
   {/* ── Hero (full-bleed) ────────────────────────────────────────────── */}
   <div style={{position:'relative', minHeight:'clamp(400px, 56vh, 580px)', background: hero ? `linear-gradient(rgba(11,41,53,.55), rgba(11,41,53,.66)), url(${hero}) center/cover` : `linear-gradient(150deg, ${p.heroA}, ${p.heroB})`, color:'#fff', display:'flex', flexDirection:'column'}}>
@@ -53,6 +66,14 @@ export default function EventSite({ site, linkBase }) {
         ? <img src={branding.logo_url} alt={branding.tenant_name} style={{width:'32px', height:'32px', borderRadius:'9px', objectFit:'cover', background:'#fff'}} />
         : <span style={{width:'30px', height:'30px', borderRadius:'8px', background:'rgba(255,255,255,.16)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'16px'}}><Icon name="scan-line" /></span>}
       <span style={{fontSize:'14px', fontWeight:'700'}}>{branding.tenant_name}</span>
+      {/* Multipage nav — sub-pages composed in the drag-drop designer */}
+      {pages.length > 0 && (
+        <nav style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'14px', flexWrap:'wrap'}}>
+          {pages.map((pg) => (
+            <Link key={pg.slug} href={`${base}/${event.slug}/${pg.slug}`} style={{padding:'6px 12px', borderRadius:'9999px', color:'rgba(255,255,255,.92)', fontSize:'12.5px', fontWeight:'600', textDecoration:'none', background:'rgba(255,255,255,.1)'}}>{pg.title}</Link>
+          ))}
+        </nav>
+      )}
       <span style={{marginLeft:'auto', display:'inline-flex', alignItems:'center', gap:'6px', fontSize:'11px', fontWeight:'600', background:'rgba(255,255,255,.14)', padding:'6px 11px', borderRadius:'9999px', backdropFilter:'blur(4px)'}}><span style={{width:'7px', height:'7px', borderRadius:'50%', background:'#28C840'}}></span>進行中</span>
     </div>
 

@@ -13,8 +13,73 @@
 
 import { Icon } from '../components/Icon';
 
-const card = { background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px' };
-const warnCard = { background: 'var(--status-warning-bg, #FEF3C7)', border: '1px solid #FBBF24', borderRadius: '14px', padding: '14px' };
+/* ── Theme presets ─────────────────────────────────────────────────────
+ * A theme is a set of CSS-var overrides scoped to the Puck content (root
+ * render) plus page-level styles (EventSite wrapper: background + font).
+ * Blocks keep reading the same tokens, so every theme restyles every block
+ * — the "thỏa trí custom" layer that stays consistent per design system. */
+export const THEMES = {
+  default: { label: '清爽（預設）', vars: {}, page: {} },
+  dark: {
+    label: '深色',
+    vars: {
+      '--surface-sunken': 'rgba(255,255,255,.07)',
+      '--border-subtle': 'rgba(255,255,255,.15)',
+      '--border-default': 'rgba(255,255,255,.24)',
+      '--text-strong': '#F3F6F8',
+      '--text-body': '#C9D6DD',
+      '--text-subtle': '#8FA6B0',
+      '--status-warning-bg': 'rgba(245,158,11,.16)',
+    },
+    page: { background: '#0B2935', color: '#C9D6DD' },
+  },
+  warm: {
+    label: '暖陽',
+    vars: {
+      '--surface-sunken': '#FBF2E3',
+      '--border-subtle': '#F0E0C5',
+      '--border-default': '#E2CBA2',
+      '--text-strong': '#43301A',
+      '--text-body': '#6B5638',
+      '--text-subtle': '#9C8767',
+    },
+    page: { background: '#FFFBF4' },
+  },
+  nature: {
+    label: '森林',
+    vars: {
+      '--surface-sunken': '#EEF6EC',
+      '--border-subtle': '#DCEBD6',
+      '--border-default': '#BDD8B2',
+      '--text-strong': '#1E3A26',
+      '--text-body': '#3F5C48',
+      '--text-subtle': '#7C967F',
+    },
+    page: { background: '#F7FBF6' },
+  },
+  elegant: {
+    label: '典雅（襯線體）',
+    vars: {
+      '--surface-sunken': '#FAF9F7',
+      '--border-subtle': '#E8E4DC',
+      '--border-default': '#D4CDC0',
+      '--text-strong': '#2B2620',
+      '--text-body': '#575044',
+      '--text-subtle': '#948B7B',
+      '--site-radius': '4px',
+    },
+    page: { background: '#FFFEFB' },
+    font: "Georgia, 'Noto Serif TC', 'Times New Roman', serif",
+  },
+};
+
+export function themeStyles(themeKey) {
+  const t = THEMES[themeKey] || THEMES.default;
+  return { vars: { ...t.vars, ...(t.font ? { fontFamily: t.font } : {}) }, page: { ...t.page, ...(t.font ? { fontFamily: t.font } : {}) } };
+}
+
+const card = { background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--site-radius, 14px)', padding: '14px' };
+const warnCard = { background: 'var(--status-warning-bg, #FEF3C7)', border: '1px solid #FBBF24', borderRadius: 'var(--site-radius, 14px)', padding: '14px' };
 const cardTitle = { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', fontWeight: 800, color: 'var(--text-strong)', marginBottom: '9px' };
 const ALIGN = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
@@ -248,9 +313,12 @@ export const siteConfig = {
     },
   },
   root: {
-    fields: {},
-    render: ({ children }) => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>{children}</div>
+    fields: {
+      theme: { type: 'select', label: '佈景主題（套用整站）', options: Object.entries(THEMES).map(([value, t]) => ({ value, label: t.label })) },
+    },
+    defaultProps: { theme: 'default' },
+    render: ({ children, theme }) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', ...themeStyles(theme).vars }}>{children}</div>
     ),
   },
 };

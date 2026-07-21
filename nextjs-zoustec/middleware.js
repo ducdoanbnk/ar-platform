@@ -22,9 +22,10 @@ const RESERVED = new Set(['api', 'media', 'experience', 'admin', 'e', 'portal', 
 export async function middleware(req) {
   const url = req.nextUrl;
   const isRoot = url.pathname === '/';
-  // Besides the root, only white-label event paths (/{event-slug}) qualify.
+  // Besides the root, only white-label event paths qualify: /{event-slug}
+  // or /{event-slug}/{page-slug} (multipage sub-pages).
   const seg = isRoot ? '' : url.pathname.slice(1);
-  if (!isRoot && (!/^[a-z0-9-]+$/.test(seg) || RESERVED.has(seg))) return NextResponse.next();
+  if (!isRoot && (!/^[a-z0-9-]+(\/[a-z0-9-]+)?$/.test(seg) || RESERVED.has(seg.split('/')[0]))) return NextResponse.next();
   // Never touch LIFF OAuth returns / explicit deep-links on the root.
   if (isRoot) {
     for (const k of ['code', 'liff.state', 'tenant', 'event']) {
