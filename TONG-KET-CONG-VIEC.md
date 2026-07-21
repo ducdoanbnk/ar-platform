@@ -139,6 +139,31 @@ Studio rồi upload lại. Lưu ý reward chỉ mở khóa TẠI thời điểm 
 hoàn thành đủ ngưỡng — hạ ngưỡng sau đó cần họ quét/làm lại 1 lần (chưa có
 cấp bù hồi tố — xem mục 5 nếu cần).
 
+## 3d. Session 2026-07-20/21 — builder kéo-thả Puck (commit `bd22d9b`…`89412d0`)
+
+Repo đã chuyển sang **github.com/dylan-doan/ar-platform** (remote local +
+docs đã cập nhật; SSH alias `github-work` giữ nguyên).
+
+| Commit | Nội dung |
+|---|---|
+| `bd22d9b` | **Builder kéo-thả (Puck 0.20)**: trang `/admin/builder/design` full-screen; thư viện block dùng chung `lib/site-blocks.jsx` (editor + RSC render — KHÔNG 'use client' trong file đó); lưu vào `event.config.puck` (backend giữ nguyên — config là dict tự do); EventSite render qua `@measured/puck/rsc`; migrate `sections[]` cũ bằng `sectionsToPuckData` |
+| `180b5da` | **Multipage + theme**: `config.pages = [{slug,title,nav,data}]` — rail trái quản lý trang, route `/e/{tenant}/{event}/{page}`, nav tự sinh, middleware custom-domain nhận path 2 cấp; 5 theme đầu (CSS-var preset) |
+| `89412d0` | **Thành sản phẩm**: root panel = **活動設定** (標題/介紹/封面圖 upload/獎勵/門檻/佈景主題) — lưu ngược về event record, form cũ ở `/admin/builder` XÓA (màn đó giờ chỉ còn nhiệm vụ + QR); canvas hiện hero preview WYSIWYG; **theme v2** 7 cái (registry JSON kiểu WordPress — token: `--site-radius/--site-btn-radius/--site-heading-weight/--site-card-bg`, hero overlay, font serif); **smart blocks** 數據看板 + 任務停靠點 bind dữ liệu thật qua Puck `metadata={{event,tasks}}` |
+
+Điểm kiến trúc cần nhớ:
+- **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
+  site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
+  designer sẽ được prepend 2 live block (`upgradePuckDoc`).
+- Theme là **site-wide, lấy từ root props của TRANG CHỦ** (`siteTheme()`);
+  trang con bị ép theme đó khi render.
+- Editor tắt iframe (`iframe:{enabled:false}`) để canvas ăn brand CSS vars
+  từ `applyBrand` — đừng bật lại nếu không xử lý style sync.
+- Puck editor: `createUsePuck()` + `overrides.headerActions` cho nút lưu;
+  chuyển trang = remount `<Puck key={cur}>` + draft giữ trong `draftsRef`.
+- Hướng đã bàn, chưa làm: AI sinh trang từ block library (kiểu Base44, cần
+  `ANTHROPIC_API_KEY` backend); bảng `site_pages` riêng khi lên SaaS; block
+  Embed có sanitize (rủi ro XSS — để sau).
+
 ## 4. Kiến trúc — điểm không được quên
 
 - **RLS pinned connection**: `_guc_session()` trong `backend/app/db/session.py`
