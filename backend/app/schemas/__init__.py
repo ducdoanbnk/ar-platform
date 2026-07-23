@@ -213,6 +213,11 @@ class EventCreate(BaseModel):
 
 
 class EventUpdate(BaseModel):
+    # Editable public-URL slug (unique per tenant; QR deep-links use the
+    # event ID so existing printed codes keep working after a rename).
+    slug: str | None = Field(
+        default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$"
+    )
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     config: dict | None = None

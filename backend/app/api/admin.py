@@ -287,6 +287,19 @@ async def update_event(
 ) -> EventOut:
     event = await _get_event(ctx, event_id)
     changes = body.model_dump(exclude_unset=True)
+    new_slug = changes.get("slug")
+    if new_slug and new_slug != event.slug:
+        taken = (
+            await ctx.session.execute(
+                select(Event.id).where(
+                    Event.tenant_id == ctx.identity.tenant_id,
+                    Event.slug == new_slug,
+                    Event.id != event_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if taken:
+            raise ApiError(409, "slug_taken", "此代稱（slug）已有其他活動使用。")
     for key, value in changes.items():
         setattr(event, key, value)
     await _audit_admin(ctx, "event.updated", "event", event.id, {"fields": list(changes)})

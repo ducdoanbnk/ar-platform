@@ -134,6 +134,7 @@ export default function Page() {
         home = { ...home, root: { ...(home.root || {}), props: {
           ...(home.root?.props || {}),
           title: ev.name,
+          slug: ev.slug,
           description: ev.description || '',
           heroImage: ev.config?.heroImage || '',
           rewardName: ev.reward_name || '',
@@ -259,6 +260,7 @@ export default function Page() {
         const home = { ...puck, root: { ...(puck.root || {}), props: {
           ...(puck.root?.props || {}),
           title: event.name,
+          slug: event.slug,
           description: event.description || '',
           heroImage: event.config?.heroImage || '',
           rewardName: event.reward_name || '',
@@ -288,9 +290,15 @@ export default function Page() {
       const rp = home.root?.props || {};
       let threshold = Number(rp.rewardThreshold) || 1;
       if (tasks.length > 0 && threshold > tasks.length) threshold = tasks.length;
+      // Editable public-URL slug — sanitized client-side; 409 from the
+      // backend (taken by a sibling event) surfaces as a normal error.
+      const slug = String(rp.slug || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
+        .replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
       const updated = await adminApi(`/api/admin/events/${event.id}`, {
         method: 'PATCH',
         body: {
+          ...(slug && slug.length >= 2 && slug !== event.slug ? { slug } : {}),
           name: (rp.title || '').trim() || event.name,
           description: rp.description || '',
           reward_name: rp.rewardName || '',

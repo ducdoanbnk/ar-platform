@@ -194,6 +194,7 @@ export const editorConfig = {
     label: '活動設定',
     fields: {
       title: { type: 'text', label: '活動標題' },
+      slug: { type: 'text', label: '網址代稱（例：tham-quan-vinh — 更改後公開網址隨之改變，印好的 QR 不受影響）' },
       description: { type: 'textarea', label: '活動介紹' },
       heroImage: { type: 'custom', label: '封面圖', render: ({ value, onChange }) => <ImageUploadField value={value} onChange={onChange} /> },
       hideHero: { type: 'radio', label: '預設 Hero 區', options: [{ label: '顯示', value: '' }, { label: '隱藏（自行設計）', value: 'hide' }] },
@@ -211,7 +212,7 @@ export const editorConfig = {
       themeCustom: { type: 'custom', label: '主題細部自訂（選「自訂主題…」後生效）', render: ({ value, onChange }) => <ThemeCustomizerField value={value} onChange={onChange} /> },
       customCss: { type: 'textarea', label: '全站自訂 CSS（進階 — 可搭配區塊的 CSS class）' },
     },
-    defaultProps: { title: '', description: '', heroImage: '', hideHero: '', rewardName: '', rewardThreshold: 1, menu: [], theme: 'default', themeCustom: {}, customCss: '' },
+    defaultProps: { title: '', slug: '', description: '', heroImage: '', hideHero: '', rewardName: '', rewardThreshold: 1, menu: [], theme: 'default', themeCustom: {}, customCss: '' },
     render: EditorRoot,
   },
 };

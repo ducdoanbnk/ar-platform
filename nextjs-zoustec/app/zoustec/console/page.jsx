@@ -479,7 +479,8 @@ export default function Page() {
                 ))}
               </div>
             )}
-            <button onClick={createKey} disabled={mgrBusy} style={{height:'38px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer', opacity: mgrBusy ? .6 : 1}}>產生全租戶金鑰</button>
+            <button onClick={createKey} disabled={mgrBusy} style={{height:'38px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer', opacity: mgrBusy ? .6 : 1}}>產生／輪替金鑰</button>
+            <div style={{fontSize:'10.5px', color:'var(--text-subtle)', marginTop:'6px', lineHeight:1.5}}>客戶只持有一組金鑰 — 產生新金鑰會自動撤銷舊的全租戶金鑰。</div>
             {newKey && (
               <div style={{marginTop:'8px', padding:'10px 12px', borderRadius:'8px', background:'var(--status-success-bg, #ECFDF5)', color:'var(--status-success-fg, #047857)', fontSize:'12px', fontWeight:'600', lineHeight:1.7}}>
                 金鑰已產生 ✓ 僅顯示這一次 — 請交給客戶填入其網站的 <span style={{fontFamily:'var(--font-mono)'}}>.env.local</span>（ZOUSTEC_EXPORT_KEY）：<br/>

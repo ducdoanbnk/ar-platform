@@ -48,6 +48,10 @@ npm start          # 或部署到 Vercel / Render
 
 ## 金鑰管理
 
-`.env.local` 內的 `ZOUSTEC_EXPORT_KEY` 為此活動專屬的唯讀金鑰，
-只能讀取本活動的公開內容（無會員資料、無寫入權限）。如需撤銷，
-請至平台後台的匯出金鑰管理。
+貴公司持有**一組** Zoustec API 金鑰（開通服務時由 Zoustec 提供，
+可要求輪替 — 舊金鑰立即失效）。將它填入 `.env.local` 的
+`ZOUSTEC_EXPORT_KEY` 即啟用內容自動同步；未填時網站以
+`data/site.json` 快照運作，功能不受影響。
+
+金鑰為唯讀，僅能讀取貴公司活動的公開內容（無會員資料、無寫入
+權限），請勿提交到公開的版本庫（`.gitignore` 已排除 `.env.local`）。

@@ -449,8 +449,29 @@ async def create_tenant_api_key(
 ) -> ExportKeyCreated:
     """Tenant-wide headless key (event_id NULL — reads EVERY event of the
     tenant). Issued when onboarding a customer whose devs self-host the
-    exported Next.js site; plaintext is returned exactly once."""
+    exported Next.js site; plaintext is returned exactly once.
+
+    ROTATION semantics — the customer holds exactly ONE active key: issuing
+    a new one revokes every previous tenant-wide key."""
     tenant = await _get_tenant(ctx, tenant_id)
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    old_keys = (
+        (
+            await ctx.session.execute(
+                select(ExportKey).where(
+                    ExportKey.tenant_id == tenant.id,
+                    ExportKey.event_id.is_(None),
+                    ExportKey.revoked_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for old in old_keys:
+        old.revoked_at = now
     plaintext = f"zsk_{secrets.token_urlsafe(32)}"
     key = ExportKey(
         tenant_id=tenant.id,

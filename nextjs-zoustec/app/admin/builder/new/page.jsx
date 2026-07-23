@@ -13,9 +13,13 @@ const TYPES = [
   { key: 'shopping', icon: 'shopping-bag', title: '購物中心 / 展館', sub: 'Indoor · 商場、展場', feats: ['店家位置圖', '消費任務', '室內 QR 任務'] },
 ];
 
+// Clean slug from the name (diacritics stripped so "Tham quan Vinh" →
+// tham-quan-vinh); the random suffix is only added on a 409 collision.
 const slugify = (s) =>
-  (s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'event')
-    .slice(0, 40) + '-' + Date.now().toString(36).slice(-4);
+  (s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'event')
+    .slice(0, 40);
 
 export default function Page() {
   const router = useRouter();
@@ -29,10 +33,15 @@ export default function Page() {
     setBusy(true); setError('');
     try {
       const eventName = name.trim() || TYPES.find((t) => t.key === type).title + '活動';
-      const ev = await adminApi('/api/admin/events', {
-        method: 'POST',
-        body: { slug: slugify(eventName), name: eventName, event_type: type, config: { sections: DEFAULT_SECTIONS[type] }, reward_threshold: 2, reward_name: '紀念獎勵' },
-      });
+      const body = { name: eventName, event_type: type, config: { sections: DEFAULT_SECTIONS[type] }, reward_threshold: 2, reward_name: '紀念獎勵' };
+      let ev;
+      try {
+        ev = await adminApi('/api/admin/events', { method: 'POST', body: { ...body, slug: slugify(eventName) } });
+      } catch (err) {
+        if (err.code !== 'slug_taken') throw err;
+        // Same-named event exists — disambiguate with a short suffix.
+        ev = await adminApi('/api/admin/events', { method: 'POST', body: { ...body, slug: `${slugify(eventName)}-${Date.now().toString(36).slice(-4)}` } });
+      }
       router.push(`/admin/builder?event=${ev.id}`);
     } catch (e) {
       if (e instanceof AuthRequired) return router.replace(loginUrl('/admin/builder/new'));
