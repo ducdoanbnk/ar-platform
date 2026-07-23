@@ -636,6 +636,30 @@ async def list_export_keys(
     return [ExportKeyOut.model_validate(k) for k in keys]
 
 
+@router.post("/events/{event_id}/export-keys", response_model=ExportKeyCreated)
+async def create_export_key(
+    event_id: uuid.UUID, ctx: AuthContext = Depends(tenant_admin_context)
+) -> ExportKeyCreated:
+    """Mint a scoped headless key and return the plaintext EXACTLY ONCE —
+    used by the Next.js project export (the frontend bakes it into .env)."""
+    await _get_event(ctx, event_id)
+    plaintext = f"zsk_{secrets.token_urlsafe(32)}"
+    key = ExportKey(
+        tenant_id=ctx.identity.tenant_id,
+        event_id=event_id,
+        key_prefix=plaintext[:12],
+        key_hash=hash_export_key(plaintext),
+    )
+    ctx.session.add(key)
+    await ctx.session.flush()
+    await _audit_admin(
+        ctx, "export_key.created", "export_key", key.id, {"prefix": key.key_prefix}
+    )
+    await ctx.session.commit()
+    out = ExportKeyOut.model_validate(key)
+    return ExportKeyCreated(**out.model_dump(), key=plaintext)
+
+
 @router.post("/export-keys/{key_id}/revoke", response_model=ExportKeyOut)
 async def revoke_export_key(
     key_id: uuid.UUID, ctx: AuthContext = Depends(tenant_admin_context)

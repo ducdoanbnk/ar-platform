@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation';
 import { Puck, Render, createUsePuck } from '@measured/puck';
 import '@measured/puck/puck.css';
 import { Icon } from '../../../../components/Icon';
-import { adminApi, AuthRequired, loginUrl } from '../../../../lib/admin-client';
+import { adminApi, adminSession, AuthRequired, loginUrl } from '../../../../lib/admin-client';
 import { editorConfig, editorSubPageConfig } from '../../../../lib/puck-editor-config';
 import { sectionsToPuckData, siteConfig, THEMES, themeStyles, upgradePuckDoc } from '../../../../lib/site-blocks';
 import { SITE_TEMPLATES, TEMPLATE_CATS, applyTemplate } from '../../../../lib/site-templates';
@@ -193,6 +193,89 @@ export default function Page() {
     if (cur === slug) setCur(HOME);
   }
 
+  function currentDesign() {
+    return {
+      puck: draftsRef.current[HOME] || homeDoc,
+      pages: pages.map((p) => ({ ...p, data: draftsRef.current[p.slug] || p.data })),
+    };
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Full Next.js project zip — dev-customizable, self-hostable, live-syncs
+   * content from the platform via a freshly minted scoped key. */
+  async function exportNextjs() {
+    if (!event || busy) return;
+    setBusy(true); setError('');
+    try {
+      const s = adminSession.get('tenant');
+      const res = await fetch('/api/export-nextjs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${s?.token || ''}` },
+        body: JSON.stringify({ eventId: event.id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d?.error?.message || `HTTP ${res.status}`);
+      }
+      const name = (res.headers.get('content-disposition')?.match(/filename="(.+)"/) || [])[1] || 'site.zip';
+      downloadBlob(await res.blob(), name);
+      setFlash('已匯出 Next.js 專案 ✓'); setTimeout(() => setFlash(''), 2500);
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  }
+
+  function exportDesignJson() {
+    const design = currentDesign();
+    downloadBlob(new Blob([JSON.stringify(design, null, 2)], { type: 'application/json' }), `${event?.slug || 'site'}-design.json`);
+  }
+
+  /** Design (data) round-trip — accepts a design JSON export or the
+   * data/site.json snapshot from an exported project. */
+  function importDesignJson(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(String(reader.result));
+        const cfg = json?.event?.config || json?.config || json;
+        const puck = cfg?.puck;
+        const inPages = Array.isArray(cfg?.pages) ? cfg.pages : [];
+        if (!puck || !Array.isArray(puck.content)) throw new Error('檔案格式不符 — 需要含 puck.content 的設計 JSON。');
+        const valid = new Set(Object.keys(siteConfig.components));
+        const walk = (items) => (items || []).forEach((b) => {
+          if (!valid.has(b.type)) throw new Error(`未知區塊類型：${b.type}`);
+          Object.values(b.props || {}).forEach((v) => {
+            if (Array.isArray(v) && v[0]?.type && v[0]?.props) walk(v);
+          });
+        });
+        walk(puck.content);
+        inPages.forEach((p) => walk(p?.data?.content));
+        // Event-owned basics stay this event's own — only design travels.
+        const home = { ...puck, root: { ...(puck.root || {}), props: {
+          ...(puck.root?.props || {}),
+          title: event.name,
+          description: event.description || '',
+          heroImage: event.config?.heroImage || '',
+          rewardName: event.reward_name || '',
+          rewardThreshold: event.reward_threshold || 1,
+        } } };
+        draftsRef.current = {};
+        setHomeDoc(home);
+        setPages(inPages.map((p) => ({ slug: p.slug, title: p.title, nav: p.nav !== false, data: p.data })));
+        setCur(HOME);
+        setRev((r) => r + 1);
+        setFlash('已匯入設計 — 按「儲存並發佈」生效'); setTimeout(() => setFlash(''), 3500);
+        setError('');
+      } catch (e) { setError(e.message); }
+    };
+    reader.readAsText(file);
+  }
+
   async function save(currentDoc) {
     if (!event || busy) return;
     setBusy(true); setError('');
@@ -277,6 +360,21 @@ export default function Page() {
             <div style={{ fontSize: '10.5px', color: 'var(--text-subtle)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>/{event.slug}/{curPage.slug}</div>
           </div>
         )}
+
+        {/* Developer round-trip: full project out, design data back in */}
+        <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '10px', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-subtle)', margin: '0 4px 2px' }}>開發者</div>
+          <button onClick={exportNextjs} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 10px', borderRadius: '9px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+            <span style={{ fontSize: '14px', display: 'inline-flex', lineHeight: 0, color: 'var(--primary-600)' }}><Icon name={busy ? 'loader' : 'download'} /></span>匯出 Next.js 專案
+          </button>
+          <button onClick={exportDesignJson} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 10px', borderRadius: '9px', border: '1px solid var(--border-default)', background: '#fff', color: 'var(--text-body)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+            <span style={{ fontSize: '14px', display: 'inline-flex', lineHeight: 0, color: 'var(--primary-600)' }}><Icon name="file-json" /></span>匯出設計 JSON
+          </button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 10px', borderRadius: '9px', border: '1.5px dashed var(--border-default)', color: 'var(--text-body)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+            <span style={{ fontSize: '14px', display: 'inline-flex', lineHeight: 0, color: 'var(--primary-600)' }}><Icon name="upload" /></span>匯入設計 JSON
+            <input type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={(e) => { importDesignJson(e.target.files?.[0]); e.target.value = ''; }} />
+          </label>
+        </div>
 
         <div style={{ marginTop: 'auto', fontSize: '10.5px', color: 'var(--text-subtle)', lineHeight: 1.6, padding: '4px' }}>
           活動設定（標題／封面圖／獎勵／佈景主題）：在「首頁」點畫布空白處 → 右側面板。主題套用整個網站。
