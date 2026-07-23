@@ -48,8 +48,13 @@ class ExportKey(Base, UUIDPk):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True
     )
-    event_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), index=True
+    # NULL = tenant-wide key (issued from the Zoustec console — reads every
+    # event of the tenant); non-NULL = scoped to one event (project export).
+    event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("events.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
     )
     key_prefix: Mapped[str] = mapped_column(String(12))  # shown in admin lists
     key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)

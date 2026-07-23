@@ -8,11 +8,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
 from app.api.deps import AuthContext, platform_admin_context
+from app.api.headless import hash_export_key
 from app.core.errors import ApiError
 from app.core.security import hash_password
 from app.models import Event, Member, Stamp, Tenant
+from app.models.model3d import ExportKey
 from app.schemas import (
     EventOut,
+    ExportKeyCreated,
+    ExportKeyOut,
     TenantAdminCreate,
     TenantAdminOut,
     TenantCreate,
@@ -414,3 +418,85 @@ async def overview(
             for r in monthly_rows
         ],
     }
+
+
+# ------------------------------------------------------------------ tenant API keys (headless)
+
+@router.get("/tenants/{tenant_id}/api-keys", response_model=list[ExportKeyOut])
+async def list_tenant_api_keys(
+    tenant_id: uuid.UUID, ctx: AuthContext = Depends(platform_admin_context)
+) -> list[ExportKeyOut]:
+    await _get_tenant(ctx, tenant_id)
+    keys = (
+        (
+            await ctx.session.execute(
+                select(ExportKey)
+                .where(ExportKey.tenant_id == tenant_id)
+                .order_by(ExportKey.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [ExportKeyOut.model_validate(k) for k in keys]
+
+
+@router.post(
+    "/tenants/{tenant_id}/api-keys", response_model=ExportKeyCreated, status_code=201
+)
+async def create_tenant_api_key(
+    tenant_id: uuid.UUID, ctx: AuthContext = Depends(platform_admin_context)
+) -> ExportKeyCreated:
+    """Tenant-wide headless key (event_id NULL — reads EVERY event of the
+    tenant). Issued when onboarding a customer whose devs self-host the
+    exported Next.js site; plaintext is returned exactly once."""
+    tenant = await _get_tenant(ctx, tenant_id)
+    plaintext = f"zsk_{secrets.token_urlsafe(32)}"
+    key = ExportKey(
+        tenant_id=tenant.id,
+        event_id=None,
+        key_prefix=plaintext[:12],
+        key_hash=hash_export_key(plaintext),
+    )
+    ctx.session.add(key)
+    await ctx.session.flush()
+    await record_audit(
+        ctx.session,
+        tenant_id=tenant.id,
+        actor_type="platform_admin",
+        actor_id=ctx.identity.subject_id,
+        action="tenant_api_key.created",
+        entity_type="export_key",
+        entity_id=key.id,
+        data={"prefix": key.key_prefix},
+    )
+    await ctx.session.commit()
+    out = ExportKeyOut.model_validate(key)
+    return ExportKeyCreated(**out.model_dump(), key=plaintext)
+
+
+@router.post("/api-keys/{key_id}/revoke", response_model=ExportKeyOut)
+async def revoke_tenant_api_key(
+    key_id: uuid.UUID, ctx: AuthContext = Depends(platform_admin_context)
+) -> ExportKeyOut:
+    key = (
+        await ctx.session.execute(select(ExportKey).where(ExportKey.id == key_id))
+    ).scalar_one_or_none()
+    if key is None:
+        raise ApiError(404, "key_not_found", "找不到金鑰。")
+    if key.revoked_at is None:
+        from datetime import datetime, timezone
+
+        key.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        await record_audit(
+            ctx.session,
+            tenant_id=key.tenant_id,
+            actor_type="platform_admin",
+            actor_id=ctx.identity.subject_id,
+            action="tenant_api_key.revoked",
+            entity_type="export_key",
+            entity_id=key.id,
+            data={"prefix": key.key_prefix},
+        )
+        await ctx.session.commit()
+    return ExportKeyOut.model_validate(key)

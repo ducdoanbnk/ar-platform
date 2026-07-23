@@ -61,6 +61,9 @@ export default function Page() {
   const [mgrAdmins, setMgrAdmins] = useState(null);
   const [newAdmin, setNewAdmin] = useState({ email: '', name: '' });
   const [tempCred, setTempCred] = useState(null); // { email, password } — shown once
+  // Tenant-wide headless API keys (customer self-hosted Next.js sites)
+  const [mgrKeys, setMgrKeys] = useState(null);
+  const [newKey, setNewKey] = useState(null); // plaintext — shown once
   // New-tenant modal
   const [newT, setNewT] = useState(null);     // { name, slug } | null
   const [ntBusy, setNtBusy] = useState(false);
@@ -84,7 +87,9 @@ export default function Page() {
       });
       setMgrFlash('');
       setMgrAdmins(null); setNewAdmin({ email: '', name: '' }); setTempCred(null);
+      setMgrKeys(null); setNewKey(null);
       loadAdmins(tenantId);
+      loadKeys(tenantId);
     } catch (e) {
       if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
       setError(e.message);
@@ -98,6 +103,40 @@ export default function Page() {
       if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
       setMgrError(e.message);
     }
+  }
+
+  async function loadKeys(tenantId) {
+    try {
+      setMgrKeys(await platformApi(`/api/platform/tenants/${tenantId}/api-keys`));
+    } catch (e) {
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
+      setMgrError(e.message);
+    }
+  }
+
+  async function createKey() {
+    if (!mgr || mgrBusy) return;
+    setMgrBusy(true); setMgrError(''); setNewKey(null);
+    try {
+      const k = await platformApi(`/api/platform/tenants/${mgr.id}/api-keys`, { method: 'POST' });
+      setNewKey(k.key);
+      await loadKeys(mgr.id);
+    } catch (e) {
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
+      setMgrError(e.message);
+    } finally { setMgrBusy(false); }
+  }
+
+  async function revokeKey(keyId) {
+    if (!mgr || mgrBusy || !window.confirm('撤銷此金鑰？使用中的客戶網站將改用離線快照。')) return;
+    setMgrBusy(true); setMgrError('');
+    try {
+      await platformApi(`/api/platform/api-keys/${keyId}/revoke`, { method: 'POST' });
+      await loadKeys(mgr.id);
+    } catch (e) {
+      if (e instanceof AuthRequired) return router.replace(loginUrl('/zoustec/console', { platform: true }));
+      setMgrError(e.message);
+    } finally { setMgrBusy(false); }
   }
 
   async function createAdmin() {
@@ -412,6 +451,39 @@ export default function Page() {
                 Email：<span style={{fontFamily:'var(--font-mono)', fontWeight:'700'}}>{tempCred.email}</span><br/>
                 暫時密碼：<span style={{fontFamily:'var(--font-mono)', fontWeight:'700'}}>{tempCred.password}</span><br/>
                 客戶首次登入 /admin/login 時會被要求設定新密碼。
+              </div>
+            )}
+          </div>
+
+          {/* Tenant-wide headless API keys — for the customer's self-hosted
+              Next.js site (.env ZOUSTEC_EXPORT_KEY). Read-only, all events
+              of this tenant, revocable. */}
+          <div style={{borderTop:'1px solid var(--border-subtle)', paddingTop:'14px', marginBottom:'16px'}}>
+            <div style={{fontSize:'12px', fontWeight:'700', color:'var(--text-body)', marginBottom:'8px'}}>API 金鑰（客戶自架網站 · 唯讀）</div>
+            {mgrKeys === null ? (
+              <div style={{fontSize:'12px', color:'var(--text-subtle)', marginBottom:'10px'}}>載入中…</div>
+            ) : mgrKeys.length === 0 ? (
+              <div style={{fontSize:'12px', color:'var(--text-subtle)', marginBottom:'10px'}}>尚無金鑰。</div>
+            ) : (
+              <div style={{display:'flex', flexDirection:'column', gap:'6px', marginBottom:'10px'}}>
+                {mgrKeys.map((k) => (
+                  <div key={k.id} style={{display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'8px', background:'var(--surface-sunken, #F8FAFC)', opacity: k.revoked_at ? .55 : 1}}>
+                    <div style={{flex:1, minWidth:0}}>
+                      <div style={{fontSize:'12.5px', fontWeight:'700', color:'var(--text-strong)', fontFamily:'var(--font-mono)'}}>{k.key_prefix}…</div>
+                      <div style={{fontSize:'11px', color:'var(--text-subtle)'}}>{k.event_id ? '單一活動（專案匯出）' : '全租戶（Console 簽發）'}{k.revoked_at ? ' · 已撤銷' : ''}</div>
+                    </div>
+                    {!k.revoked_at && (
+                      <button onClick={() => revokeKey(k.id)} disabled={mgrBusy} style={{height:'30px', padding:'0 10px', borderRadius:'7px', border:'1px solid var(--border-default)', background:'#fff', color:'var(--status-danger-fg, #B91C1C)', fontSize:'11.5px', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap', opacity: mgrBusy ? .6 : 1}}>撤銷</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={createKey} disabled={mgrBusy} style={{height:'38px', padding:'0 14px', borderRadius:'8px', background:'var(--primary-600)', color:'#fff', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer', opacity: mgrBusy ? .6 : 1}}>產生全租戶金鑰</button>
+            {newKey && (
+              <div style={{marginTop:'8px', padding:'10px 12px', borderRadius:'8px', background:'var(--status-success-bg, #ECFDF5)', color:'var(--status-success-fg, #047857)', fontSize:'12px', fontWeight:'600', lineHeight:1.7}}>
+                金鑰已產生 ✓ 僅顯示這一次 — 請交給客戶填入其網站的 <span style={{fontFamily:'var(--font-mono)'}}>.env.local</span>（ZOUSTEC_EXPORT_KEY）：<br/>
+                <span style={{fontFamily:'var(--font-mono)', fontWeight:'700', wordBreak:'break-all'}}>{newKey}</span>
               </div>
             )}
           </div>

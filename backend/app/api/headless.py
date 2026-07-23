@@ -56,7 +56,9 @@ async def headless_event(
 
     if key is None or key.revoked_at is not None:
         raise ApiError(401, "export_key_invalid", "匯出金鑰無效或已撤銷。")
-    if key.event_id != event_id:
+    # event_id NULL = tenant-wide key (console-issued): any event of the
+    # tenant — the tenant_session below + RLS still hide other tenants.
+    if key.event_id is not None and key.event_id != event_id:
         raise ApiError(403, "export_key_scope", "匯出金鑰不適用於此活動。")
 
     async with tenant_session(key.tenant_id) as session:
