@@ -160,6 +160,8 @@ docs đã cập nhật; SSH alias `github-work` giữ nguyên).
 
 | `883ed31` | **Key cấp tenant + fix media export**: migration 0009 (`export_keys.event_id` nullable — NULL = key toàn tenant, console 白標設定 mục API 金鑰 phát/thu hồi, plaintext 1 lần); site export proxy `/media` + `/api` về platform qua rewrites (fix ảnh 404). LƯU Ý: prod cần migration 0009 chạy khi backend khởi động |
 
+| `22644e2` | **Slug sửa được + 1 key/khách**: wizard slug sạch bỏ dấu (đuôi chỉ khi trùng), ô 網址代稱 trong 活動設定 (PATCH slug, 409 nếu trùng — QR không ảnh hưởng vì dùng event ID); export KHÔNG mint key (env trống, snapshot qua admin API không kèm qr_token), console 產生／輪替金鑰 = revoke hết key toàn tenant cũ → đúng 1 key sống |
+
 Điểm kiến trúc cần nhớ:
 - **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
   site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
