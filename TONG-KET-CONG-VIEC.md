@@ -158,6 +158,8 @@ docs đã cập nhật; SSH alias `github-work` giữ nguyên).
 
 | `3e115a2` | **匯出 Next.js 專案 + vòng lặp dev**: designer có mục 開發者 — (1) 匯出 Next.js 專案: zip dự án chạy được ngay (`npm install && npm run dev`), gồm block library nguyên văn + snapshot + `.env.local` chứa export key riêng (POST `/api/admin/events/{id}/export-keys` mới, plaintext 1 lần; route frontend `/api/export-nextjs` đóng zip bằng jszip từ `export-template/`); site tải về live-sync 60s qua headless API, offline dùng snapshot; (2) 匯出/匯入設計 JSON — dev sửa JSON nạp lại platform (validate block, giữ field event-owned). Code sửa tay = TỰ HOST (không nạp code vào platform — RCE). Tests 74/74 |
 
+| `883ed31` | **Key cấp tenant + fix media export**: migration 0009 (`export_keys.event_id` nullable — NULL = key toàn tenant, console 白標設定 mục API 金鑰 phát/thu hồi, plaintext 1 lần); site export proxy `/media` + `/api` về platform qua rewrites (fix ảnh 404). LƯU Ý: prod cần migration 0009 chạy khi backend khởi động |
+
 Điểm kiến trúc cần nhớ:
 - **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
   site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
