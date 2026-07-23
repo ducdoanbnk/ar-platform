@@ -156,6 +156,8 @@ docs đã cập nhật; SSH alias `github-work` giữ nguyên).
 
 | `d93b47a` | **佈景主題商店**: store full-screen 8 版型 × 7 配色 (56 biến thể) — lọc 6 danh mục, chấm配色 trên card, preview lớn cuộn được, `applyTemplate(tpl, rootProps, themeOverride)` |
 
+| `3e115a2` | **匯出 Next.js 專案 + vòng lặp dev**: designer có mục 開發者 — (1) 匯出 Next.js 專案: zip dự án chạy được ngay (`npm install && npm run dev`), gồm block library nguyên văn + snapshot + `.env.local` chứa export key riêng (POST `/api/admin/events/{id}/export-keys` mới, plaintext 1 lần; route frontend `/api/export-nextjs` đóng zip bằng jszip từ `export-template/`); site tải về live-sync 60s qua headless API, offline dùng snapshot; (2) 匯出/匯入設計 JSON — dev sửa JSON nạp lại platform (validate block, giữ field event-owned). Code sửa tay = TỰ HOST (không nạp code vào platform — RCE). Tests 74/74 |
+
 Điểm kiến trúc cần nhớ:
 - **`config.puckVersion=2`** = layout mới (stats/tasks là block, admin tự đặt);
   site chưa re-publish giữ layout v1 (stats/tasks cứng). Doc v1 mở trong
